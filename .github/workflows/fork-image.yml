@@ -1,0 +1,92 @@
+name: Build fork image (norsk-locale)
+
+# Fork-local workflow. It exists because the upstream docker-publish.yml
+# publishes to erp-mafia/gnubok, and this fork needs its own image in its own
+# namespace so 192.168.1.170 can pull a build that contains the Norwegian
+# changes. Keeping it as a separate file means no upstream workflow is edited,
+# so a merge from erp-mafia/accounted never conflicts here.
+#
+# amd64 only: the Docker host is x86_64. The upstream workflow's arm64 half
+# would double the build time for a platform nothing here runs.
+#
+# The Docker host cannot build this image itself — 2 CPUs and ~2.3 GB free
+# while the Supabase stack is running, and `next build` was OOM-killed after 40
+# minutes (`oom_kill 1` in the host's memory.events). CI builds it instead.
+
+on:
+  push:
+    branches: [norsk-locale]
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: haraldr1389/accounted
+
+jobs:
+  build:
+    name: Build linux/amd64
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=norsk-locale
+            type=sha,prefix=sha-,format=long
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          platforms: linux/amd64
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            EXTENSIONS_PRESET=self-hosted
+          push: true
+
+      # The image is generic: NEXT_PUBLIC_* values are sentinels that
+      # docker-entrypoint.sh substitutes at container start. That only works if
+      # the sentinel survives minification — an in-place comparison
+      # (`process.env.X === 'true'`) gets constant-folded away and the flag is
+      # stuck off forever. Verifying the artifact is the only way to catch it.
+      - name: Verify NEXT_PUBLIC_* sentinels survived the build
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+          for VAR in NEXT_PUBLIC_SELF_HOSTED NEXT_PUBLIC_REQUIRE_MFA; do
+            if docker run --rm --entrypoint sh "$IMAGE" -c \
+                 "grep -rq '__${VAR}__' /opt/gnubok-template/.next"; then
+              echo "ok: __${VAR}__ present in build output"
+            else
+              MISSING="${MISSING} ${VAR}"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Sentinel(s) missing from the build output:${MISSING}"
+            echo "::error::Read these flags via lib/env/public-flags (flagEnabled/isSelfHosted)."
+            exit 1
+          fi
