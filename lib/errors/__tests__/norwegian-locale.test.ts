@@ -10,6 +10,8 @@ import { describe, it, expect } from 'vitest'
 import { getErrorMessage, isNorwegianUserMessage, looksLikeUserFacingNorwegian } from '../get-error-message'
 import { getErrorEntry, listErrorCodes } from '../structured-errors'
 import type { StructuredErrorEntry } from '../structured-errors'
+import { errorResponse } from '../get-structured-error'
+import type { ErrorEnvelope } from '../get-structured-error'
 
 function allEntries(): Array<{ code: string; entry: StructuredErrorEntry }> {
   return listErrorCodes().map((code) => ({ code, entry: getErrorEntry(code)! }))
@@ -144,5 +146,38 @@ describe('Norwegian free-text detection', () => {
     expect(looksLikeUserFacingNorwegian('Ingen økt funnet.')).toBe(true)
     expect(looksLikeUserFacingNorwegian('Kunne ikke hente listen.')).toBe(true)
     expect(looksLikeUserFacingNorwegian('Failed to fetch customer')).toBe(false)
+  })
+})
+
+describe('REST error envelope carries Norwegian', () => {
+  const noopLogger = { error: () => {}, warn: () => {} }
+
+  async function envelopeFor(code: string): Promise<ErrorEnvelope> {
+    const err = Object.assign(new Error('engine text'), { code })
+    const res = errorResponse(err, noopLogger, { requestId: 'req_test' })
+    expect(res.status).toBe(getErrorEntry(code)!.httpStatus)
+    return (await res.json()) as ErrorEnvelope
+  }
+
+  it('emits message, message_en and message_no for a known code', async () => {
+    const body = await envelopeFor('UNAUTHORIZED')
+    expect(body.error.message).toBe('Din session har gått ut. Logga in igen.')
+    expect(body.error.message_en).toBe('Authentication required.')
+    expect(body.error.message_no).toBe('Økten din er utløpt. Logg inn på nytt.')
+  })
+
+  it('never leaks the raw thrown message into message_no', async () => {
+    const body = await envelopeFor('UNAUTHORIZED')
+    expect(body.error.message_no).not.toBe('engine text')
+  })
+
+  it('message_no is Norwegian, not Swedish', async () => {
+    for (const code of ['NOT_FOUND', 'CONFLICT', 'RATE_LIMITED', 'UNAUTHORIZED']) {
+      const body = await envelopeFor(code)
+      expect(body.error.message_no).toBeTruthy()
+      expect(SWEDISH_ONLY.test(body.error.message_no!)).toBe(false)
+      expect(NYNORSK_ONLY.test(body.error.message_no!)).toBe(false)
+      expect(body.error.message_no).not.toBe(body.error.message)
+    }
   })
 })

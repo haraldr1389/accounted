@@ -258,8 +258,20 @@ export function getStructuredError(
 export interface ErrorEnvelope {
   error: {
     code: string
+    /**
+     * The Swedish source string, kept unchanged for API compatibility. It is
+     * NOT the message a Norwegian user sees: the app resolves the active
+     * locale from `code` via getErrorMessage, and external consumers can read
+     * `message_no` below.
+     */
     message: string
     message_en?: string
+    /**
+     * Norwegian bokmål rendering. Added by this fork; absent for envelopes
+     * built before it, so consumers must treat it as optional and fall back to
+     * `message`.
+     */
+    message_no?: string
     remediation?: StructuredErrorRemediation
     requestId?: string
     details?: unknown
@@ -543,6 +555,7 @@ function buildResponse(
       code,
       message: entry.message_sv,
       message_en: entry.message_en,
+      message_no: entry.message_no,
       ...(entry.remediation ? { remediation: entry.remediation } : {}),
       ...(requestId ? { requestId } : {}),
       ...(details !== undefined ? { details } : {}),
@@ -553,6 +566,7 @@ function buildResponse(
   if (code === 'VALIDATION_ERROR' && Array.isArray((details as { issues?: unknown } | undefined)?.issues)) {
     body.error.message = getErrorMessage(body, { locale: 'sv' })
     body.error.message_en = getErrorMessage(body, { locale: 'en' })
+    body.error.message_no = getErrorMessage(body, { locale: 'no' })
   }
   const res = NextResponse.json(body, { status: entry.httpStatus })
   if (requestId) res.headers.set('X-Request-Id', requestId)
