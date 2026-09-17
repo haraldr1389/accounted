@@ -7,8 +7,9 @@
  *   {
  *     error: {
  *       code:               machine-readable, stable forever
- *       message:            Swedish prose
+ *       message:            Swedish prose (the registry's source string)
  *       message_en:         English prose (agents prefer this)
+ *       message_no:         Norwegian bokmål prose (added by this fork)
  *       details:            structured context (pgCode, field issues, period_id...)
  *       recovery_hint:      natural-language next step the agent can act on
  *       docs_url:           canonical error-doc URL
@@ -38,8 +39,14 @@ const DOCS_BASE = process.env.NEXT_PUBLIC_APP_URL
 export interface V1ErrorBody {
   error: {
     code: string
+    /**
+     * Swedish source string, kept for compatibility. Norwegian consumers should
+     * read message_no; agents default to message_en.
+     */
     message: string
     message_en?: string
+    /** Norwegian bokmål rendering. Optional: fall back to message when absent. */
+    message_no?: string
     details?: unknown
     recovery_hint?: string
     docs_url?: string
@@ -85,7 +92,7 @@ async function rewriteEnvelope(
 ): Promise<NextResponse> {
   const status = ctx.status ?? legacyResponse.status
   const body = (await legacyResponse.json().catch(() => null)) as
-    | { error: { code: string; message: string; message_en?: string; remediation?: { description?: string }; details?: unknown } }
+    | { error: { code: string; message: string; message_en?: string; message_no?: string; remediation?: { description?: string }; details?: unknown } }
     | null
 
   if (!body?.error) {
@@ -95,6 +102,7 @@ async function rewriteEnvelope(
         code: 'INTERNAL_ERROR',
         message: 'Ett oväntat serverfel uppstod. Försök igen senare.',
         message_en: 'Internal server error.',
+        message_no: 'En uventet serverfeil oppstod. Prøv igjen senere.',
         docs_url: docsUrlFor('INTERNAL_ERROR'),
         request_id: ctx.requestId,
       },
@@ -102,13 +110,14 @@ async function rewriteEnvelope(
     return finalize(NextResponse.json(fallback, { status }), ctx)
   }
 
-  const { code, message, message_en, remediation, details } = body.error
+  const { code, message, message_en, message_no, remediation, details } = body.error
 
   const v1Body: V1ErrorBody = {
     error: {
       code,
       message,
       ...(message_en ? { message_en } : {}),
+      ...(message_no ? { message_no } : {}),
       ...(details !== undefined ? { details } : {}),
       ...(remediation?.description ? { recovery_hint: remediation.description } : {}),
       docs_url: docsUrlFor(code),
