@@ -93,3 +93,11 @@ scripts/reopen-bokslut.sql
 # part of the app. The integration itself lives in lib/analytics/ and
 # instrumentation-client.ts.
 .posthog/
+
+# Norwegian translation workbench (see messages-parts/README.md).
+# The .py scripts and the README are tracked so the catalog can be extended
+# when upstream adds strings; the intermediate source/target JSON chunks and
+# the flattened leaf files are regenerable scratch data.
+messages-parts/**
+!messages-parts/*.py
+!messages-parts/README.md

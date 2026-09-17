@@ -22,6 +22,8 @@ export interface CountryOption {
   name: string
   /** English name */
   nameEn: string
+  /** Norwegian (bokmål) name */
+  nameNo: string
 }
 
 /**
@@ -29,38 +31,38 @@ export interface CountryOption {
  * accepts any well-formed alpha-2 code, this is only what the form shows.
  */
 export const NON_EU_COUNTRIES: CountryOption[] = [
-  { code: 'NO', name: 'Norge', nameEn: 'Norway' },
-  { code: 'GB', name: 'Storbritannien', nameEn: 'United Kingdom' },
-  { code: 'CH', name: 'Schweiz', nameEn: 'Switzerland' },
-  { code: 'IS', name: 'Island', nameEn: 'Iceland' },
-  { code: 'LI', name: 'Liechtenstein', nameEn: 'Liechtenstein' },
-  { code: 'US', name: 'USA', nameEn: 'United States' },
-  { code: 'CA', name: 'Kanada', nameEn: 'Canada' },
-  { code: 'MX', name: 'Mexiko', nameEn: 'Mexico' },
-  { code: 'BR', name: 'Brasilien', nameEn: 'Brazil' },
-  { code: 'AU', name: 'Australien', nameEn: 'Australia' },
-  { code: 'NZ', name: 'Nya Zeeland', nameEn: 'New Zealand' },
-  { code: 'JP', name: 'Japan', nameEn: 'Japan' },
-  { code: 'CN', name: 'Kina', nameEn: 'China' },
-  { code: 'HK', name: 'Hongkong', nameEn: 'Hong Kong' },
-  { code: 'KR', name: 'Sydkorea', nameEn: 'South Korea' },
-  { code: 'IN', name: 'Indien', nameEn: 'India' },
-  { code: 'SG', name: 'Singapore', nameEn: 'Singapore' },
-  { code: 'TH', name: 'Thailand', nameEn: 'Thailand' },
-  { code: 'AE', name: 'Förenade Arabemiraten', nameEn: 'United Arab Emirates' },
-  { code: 'IL', name: 'Israel', nameEn: 'Israel' },
-  { code: 'TR', name: 'Turkiet', nameEn: 'Turkey' },
-  { code: 'UA', name: 'Ukraina', nameEn: 'Ukraine' },
-  { code: 'RS', name: 'Serbien', nameEn: 'Serbia' },
-  { code: 'ZA', name: 'Sydafrika', nameEn: 'South Africa' },
-  { code: 'CO', name: 'Colombia', nameEn: 'Colombia' },
-  { code: 'CW', name: 'Curaçao', nameEn: 'Curaçao' },
-  { code: 'KN', name: 'Saint Kitts och Nevis', nameEn: 'Saint Kitts and Nevis' },
+  { code: 'NO', name: 'Norge', nameEn: 'Norway', nameNo: 'Norge' },
+  { code: 'GB', name: 'Storbritannien', nameEn: 'United Kingdom', nameNo: 'Storbritannia' },
+  { code: 'CH', name: 'Schweiz', nameEn: 'Switzerland', nameNo: 'Sveits' },
+  { code: 'IS', name: 'Island', nameEn: 'Iceland', nameNo: 'Island' },
+  { code: 'LI', name: 'Liechtenstein', nameEn: 'Liechtenstein', nameNo: 'Liechtenstein' },
+  { code: 'US', name: 'USA', nameEn: 'United States', nameNo: 'USA' },
+  { code: 'CA', name: 'Kanada', nameEn: 'Canada', nameNo: 'Canada' },
+  { code: 'MX', name: 'Mexiko', nameEn: 'Mexico', nameNo: 'Mexico' },
+  { code: 'BR', name: 'Brasilien', nameEn: 'Brazil', nameNo: 'Brasil' },
+  { code: 'AU', name: 'Australien', nameEn: 'Australia', nameNo: 'Australia' },
+  { code: 'NZ', name: 'Nya Zeeland', nameEn: 'New Zealand', nameNo: 'New Zealand' },
+  { code: 'JP', name: 'Japan', nameEn: 'Japan', nameNo: 'Japan' },
+  { code: 'CN', name: 'Kina', nameEn: 'China', nameNo: 'Kina' },
+  { code: 'HK', name: 'Hongkong', nameEn: 'Hong Kong', nameNo: 'Hongkong' },
+  { code: 'KR', name: 'Sydkorea', nameEn: 'South Korea', nameNo: 'Sør-Korea' },
+  { code: 'IN', name: 'Indien', nameEn: 'India', nameNo: 'India' },
+  { code: 'SG', name: 'Singapore', nameEn: 'Singapore', nameNo: 'Singapore' },
+  { code: 'TH', name: 'Thailand', nameEn: 'Thailand', nameNo: 'Thailand' },
+  { code: 'AE', name: 'Förenade Arabemiraten', nameEn: 'United Arab Emirates', nameNo: 'De forente arabiske emirater' },
+  { code: 'IL', name: 'Israel', nameEn: 'Israel', nameNo: 'Israel' },
+  { code: 'TR', name: 'Turkiet', nameEn: 'Turkey', nameNo: 'Tyrkia' },
+  { code: 'UA', name: 'Ukraina', nameEn: 'Ukraine', nameNo: 'Ukraina' },
+  { code: 'RS', name: 'Serbien', nameEn: 'Serbia', nameNo: 'Serbia' },
+  { code: 'ZA', name: 'Sydafrika', nameEn: 'South Africa', nameNo: 'Sør-Afrika' },
+  { code: 'CO', name: 'Colombia', nameEn: 'Colombia', nameNo: 'Colombia' },
+  { code: 'CW', name: 'Curaçao', nameEn: 'Curaçao', nameNo: 'Curaçao' },
+  { code: 'KN', name: 'Saint Kitts och Nevis', nameEn: 'Saint Kitts and Nevis', nameNo: 'Saint Kitts og Nevis' },
 ]
 
 /** Every country the pickers offer: the EU 27 first, then the non-EU list. */
 export const COUNTRY_OPTIONS: CountryOption[] = [
-  ...EU_COUNTRIES.map(({ code, name, nameEn }) => ({ code, name, nameEn })),
+  ...EU_COUNTRIES.map(({ code, name, nameEn, nameNo }) => ({ code, name, nameEn, nameNo })),
   ...NON_EU_COUNTRIES,
 ]
 
@@ -121,6 +123,10 @@ const NAME_TO_CODE: Map<string, string> = (() => {
   for (const option of COUNTRY_OPTIONS) {
     map.set(foldName(option.name), option.code)
     map.set(foldName(option.nameEn), option.code)
+    // Norwegian spellings resolve too: a partner migrated from a Norwegian
+    // system writes "Kypros", "Tsjekkia" or "Hellas", which are neither the
+    // Swedish nor the English name of the same country.
+    map.set(foldName(option.nameNo), option.code)
   }
   for (const [alias, code] of Object.entries(NAME_ALIASES)) {
     map.set(foldName(alias), code)
@@ -174,12 +180,17 @@ export function isCountryCode(value: string | null | undefined): boolean {
  * country is not in COUNTRY_OPTIONS, and the raw value when it is not a
  * code at all (an unmapped legacy row).
  */
-export function getCountryName(code: string | null | undefined, locale: 'sv' | 'en' = 'sv'): string {
+export function getCountryName(
+  code: string | null | undefined,
+  locale: 'sv' | 'en' | 'no' = 'sv',
+): string {
   if (!code) return ''
   const normalized = normalizeCountryCode(code)
   const option = normalized ? OPTION_BY_CODE.get(normalized) : undefined
   if (!option) return normalized ?? code
-  return locale === 'en' ? option.nameEn : option.name
+  if (locale === 'en') return option.nameEn
+  if (locale === 'no') return option.nameNo
+  return option.name
 }
 
 /**

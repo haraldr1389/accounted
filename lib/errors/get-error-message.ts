@@ -39,7 +39,7 @@ type ErrorContext =
   | 'auth'
   | 'salary'
 
-export type ErrorLocale = 'sv' | 'en'
+export type ErrorLocale = 'sv' | 'en' | 'no'
 
 interface GetErrorMessageOptions {
   context?: ErrorContext
@@ -47,147 +47,216 @@ interface GetErrorMessageOptions {
   locale?: ErrorLocale
 }
 
-type Bilingual = { sv: string; en: string }
+type Bilingual = { sv: string; en: string; no: string }
 
 function pick(b: Bilingual, locale: ErrorLocale): string {
   return b[locale] ?? b.sv
 }
 
+/**
+ * Compose a runtime message in the active locale. Swedish is the fallback for
+ * every locale but 'no'. Used by the dynamic branches below, whose text carries
+ * an amount, a date or a lock date and therefore cannot live in the static
+ * registry.
+ */
+function loc(sv: string, no: string, locale: ErrorLocale): string {
+  return locale === 'no' ? no : sv
+}
+
+/** Swedish/Norwegian pair for the bank-connection copy, which has no English. */
+type SvNo = { sv: string; no: string }
+
+function pickSvNo(b: SvNo, locale: ErrorLocale): string {
+  return locale === 'no' ? b.no : b.sv
+}
+
 // Postgres error codes -> localized messages
 const POSTGRES_ERROR_MAP: Record<string, Bilingual> = {
-  '23505': { sv: 'En post med samma uppgifter finns redan.', en: 'A record with the same details already exists.' },
-  '23503': { sv: 'Posten kan inte ändras eftersom den refereras av annan data.', en: 'This record cannot be changed because other data refers to it.' },
-  '23502': { sv: 'Ett obligatoriskt fält saknas.', en: 'A required field is missing.' },
-  '42501': { sv: 'Du har inte behörighet att utföra denna åtgärd.', en: 'You do not have permission to perform this action.' },
-  '42P01': { sv: 'Resursen kunde inte hittas.', en: 'The resource could not be found.' },
-  '23514': { sv: 'Värdet uppfyller inte de tillåtna kraven.', en: 'The value does not meet the allowed constraints.' },
-  '40001': { sv: 'En annan ändring pågick samtidigt. Försök igen.', en: 'A concurrent change was in progress. Please try again.' },
-  '40P01': { sv: 'En konflikt uppstod. Försök igen.', en: 'A conflict occurred. Please try again.' },
-  '22P02': { sv: 'Ogiltigt värde angavs.', en: 'Invalid value supplied.' },
-  '22003': { sv: 'Värdet är utanför tillåtet intervall.', en: 'Value is out of allowed range.' },
+  '23505': { sv: 'En post med samma uppgifter finns redan.', en: 'A record with the same details already exists.', no: 'En post med samme opplysninger finnes allerede.' },
+  '23503': { sv: 'Posten kan inte ändras eftersom den refereras av annan data.', en: 'This record cannot be changed because other data refers to it.', no: 'Posten kan ikke endres fordi den refereres til av andre data.' },
+  '23502': { sv: 'Ett obligatoriskt fält saknas.', en: 'A required field is missing.', no: 'Et obligatorisk felt mangler.' },
+  '42501': { sv: 'Du har inte behörighet att utföra denna åtgärd.', en: 'You do not have permission to perform this action.', no: 'Du har ikke tilgang til å utføre denne handlingen.' },
+  '42P01': { sv: 'Resursen kunde inte hittas.', en: 'The resource could not be found.', no: 'Ressursen kunne ikke finnes.' },
+  '23514': { sv: 'Värdet uppfyller inte de tillåtna kraven.', en: 'The value does not meet the allowed constraints.', no: 'Verdien oppfyller ikke de tillatte kravene.' },
+  '40001': { sv: 'En annan ändring pågick samtidigt. Försök igen.', en: 'A concurrent change was in progress. Please try again.', no: 'En annen endring pågikk samtidig. Prøv igjen.' },
+  '40P01': { sv: 'En konflikt uppstod. Försök igen.', en: 'A conflict occurred. Please try again.', no: 'Det oppstod en konflikt. Prøv igjen.' },
+  '22P02': { sv: 'Ogiltigt värde angavs.', en: 'Invalid value supplied.', no: 'Ugyldig verdi oppgitt.' },
+  '22003': { sv: 'Värdet är utanför tillåtet intervall.', en: 'Value is out of allowed range.', no: 'Verdien er utenfor tillatt intervall.' },
 }
 
 // HTTP status codes -> localized messages
 const HTTP_STATUS_MAP: Record<number, Bilingual> = {
-  400: { sv: 'Förfrågan innehåller ogiltiga uppgifter.', en: 'The request contains invalid data.' },
-  401: { sv: 'Din session har gått ut. Logga in igen.', en: 'Your session has expired. Please sign in again.' },
-  403: { sv: 'Du har inte behörighet att utföra denna åtgärd.', en: 'You do not have permission to perform this action.' },
-  404: { sv: 'Resursen kunde inte hittas.', en: 'The resource could not be found.' },
-  409: { sv: 'En konflikt uppstod. Ladda om sidan och försök igen.', en: 'A conflict occurred. Reload the page and try again.' },
+  400: { sv: 'Förfrågan innehåller ogiltiga uppgifter.', en: 'The request contains invalid data.', no: 'Forespørselen inneholder ugyldige opplysninger.' },
+  401: { sv: 'Din session har gått ut. Logga in igen.', en: 'Your session has expired. Please sign in again.', no: 'Økten din har utløpt. Logg inn på nytt.' },
+  403: { sv: 'Du har inte behörighet att utföra denna åtgärd.', en: 'You do not have permission to perform this action.', no: 'Du har ikke tilgang til å utføre denne handlingen.' },
+  404: { sv: 'Resursen kunde inte hittas.', en: 'The resource could not be found.', no: 'Ressursen kunne ikke finnes.' },
+  409: { sv: 'En konflikt uppstod. Ladda om sidan och försök igen.', en: 'A conflict occurred. Reload the page and try again.', no: 'Det oppstod en konflikt. Last inn siden på nytt og prøv igjen.' },
   // 413 is answered by the hosting platform, before any route runs, with a
   // plain-text body: the status is the only thing a caller has to go on.
-  413: { sv: 'Filen är för stor för att skickas. Försök igen med en mindre fil.', en: 'The file is too large to send. Try again with a smaller file.' },
-  415: { sv: 'Filtypen stöds inte.', en: 'That file type is not supported.' },
-  422: { sv: 'Uppgifterna kunde inte bearbetas. Kontrollera fälten och försök igen.', en: 'The data could not be processed. Check the fields and try again.' },
-  429: { sv: 'För många förfrågningar. Vänta en stund och försök igen.', en: 'Too many requests. Wait a moment and try again.' },
-  500: { sv: 'Ett oväntat serverfel uppstod. Försök igen senare.', en: 'An unexpected server error occurred. Please try again later.' },
-  502: { sv: 'Servern är tillfälligt otillgänglig. Försök igen om en stund.', en: 'The server is temporarily unavailable. Please try again shortly.' },
-  503: { sv: 'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.', en: 'The service is temporarily unavailable. Please try again shortly.' },
+  413: { sv: 'Filen är för stor för att skickas. Försök igen med en mindre fil.', en: 'The file is too large to send. Try again with a smaller file.', no: 'Filen er for stor til å sendes. Prøv igjen med en mindre fil.' },
+  415: { sv: 'Filtypen stöds inte.', en: 'That file type is not supported.', no: 'Filtypen støttes ikke.' },
+  422: { sv: 'Uppgifterna kunde inte bearbetas. Kontrollera fälten och försök igen.', en: 'The data could not be processed. Check the fields and try again.', no: 'Opplysningene kunne ikke behandles. Kontroller feltene og prøv igjen.' },
+  429: { sv: 'För många förfrågningar. Vänta en stund och försök igen.', en: 'Too many requests. Wait a moment and try again.', no: 'For mange forespørsler. Vent litt og prøv igjen.' },
+  500: { sv: 'Ett oväntat serverfel uppstod. Försök igen senare.', en: 'An unexpected server error occurred. Please try again later.', no: 'Det oppstod en uventet serverfeil. Prøv igjen senere.' },
+  502: { sv: 'Servern är tillfälligt otillgänglig. Försök igen om en stund.', en: 'The server is temporarily unavailable. Please try again shortly.', no: 'Serveren er midlertidig utilgjengelig. Prøv igjen om litt.' },
+  503: { sv: 'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.', en: 'The service is temporarily unavailable. Please try again shortly.', no: 'Tjenesten er midlertidig utilgjengelig. Prøv igjen om litt.' },
 }
 
 // Context-specific fallbacks
 const CONTEXT_FALLBACKS: Record<ErrorContext, Bilingual> = {
-  invoice: { sv: 'Kunde inte hantera fakturan. Försök igen.', en: 'Could not process the invoice. Please try again.' },
-  supplier_invoice: { sv: 'Kunde inte hantera leverantörsfakturan. Försök igen.', en: 'Could not process the supplier invoice. Please try again.' },
-  customer: { sv: 'Kunde inte hantera kunden. Försök igen.', en: 'Could not process the customer. Please try again.' },
-  article: { sv: 'Kunde inte hantera artikeln. Försök igen.', en: 'Could not process the article. Please try again.' },
-  supplier: { sv: 'Kunde inte hantera leverantören. Försök igen.', en: 'Could not process the supplier. Please try again.' },
-  transaction: { sv: 'Kunde inte hantera transaktionen. Försök igen.', en: 'Could not process the transaction. Please try again.' },
-  journal_entry: { sv: 'Kunde inte hantera verifikationen. Försök igen.', en: 'Could not process the journal entry. Please try again.' },
-  settings: { sv: 'Kunde inte spara inställningarna. Försök igen.', en: 'Could not save settings. Please try again.' },
-  auth: { sv: 'Ett fel uppstod vid inloggningen. Försök igen.', en: 'An error occurred while signing in. Please try again.' },
-  salary: { sv: 'Kunde inte hantera löneuppgifterna. Försök igen.', en: 'Could not process the payroll data. Please try again.' },
+  invoice: { sv: 'Kunde inte hantera fakturan. Försök igen.', en: 'Could not process the invoice. Please try again.', no: 'Kunne ikke behandle fakturaen. Prøv igjen.' },
+  supplier_invoice: { sv: 'Kunde inte hantera leverantörsfakturan. Försök igen.', en: 'Could not process the supplier invoice. Please try again.', no: 'Kunne ikke behandle leverandørfakturaen. Prøv igjen.' },
+  customer: { sv: 'Kunde inte hantera kunden. Försök igen.', en: 'Could not process the customer. Please try again.', no: 'Kunne ikke behandle kunden. Prøv igjen.' },
+  article: { sv: 'Kunde inte hantera artikeln. Försök igen.', en: 'Could not process the article. Please try again.', no: 'Kunne ikke behandle artikkelen. Prøv igjen.' },
+  supplier: { sv: 'Kunde inte hantera leverantören. Försök igen.', en: 'Could not process the supplier. Please try again.', no: 'Kunne ikke behandle leverandøren. Prøv igjen.' },
+  transaction: { sv: 'Kunde inte hantera transaktionen. Försök igen.', en: 'Could not process the transaction. Please try again.', no: 'Kunne ikke behandle transaksjonen. Prøv igjen.' },
+  journal_entry: { sv: 'Kunde inte hantera verifikationen. Försök igen.', en: 'Could not process the journal entry. Please try again.', no: 'Kunne ikke behandle bilaget. Prøv igjen.' },
+  settings: { sv: 'Kunde inte spara inställningarna. Försök igen.', en: 'Could not save settings. Please try again.', no: 'Kunne ikke lagre innstillingene. Prøv igjen.' },
+  auth: { sv: 'Ett fel uppstod vid inloggningen. Försök igen.', en: 'An error occurred while signing in. Please try again.', no: 'Det oppstod en feil ved innloggingen. Prøv igjen.' },
+  salary: { sv: 'Kunde inte hantera löneuppgifterna. Försök igen.', en: 'Could not process the payroll data. Please try again.', no: 'Kunne ikke behandle lønnsdataene. Prøv igjen.' },
 }
 
-const GENERIC_FALLBACK: Bilingual = { sv: 'Något gick fel. Försök igen.', en: 'Something went wrong. Please try again.' }
+const GENERIC_FALLBACK: Bilingual = { sv: 'Något gick fel. Försök igen.', en: 'Something went wrong. Please try again.', no: 'Noe gikk galt. Prøv igjen.' }
 
-// Known error patterns → user-friendly Swedish messages
-const ERROR_PATTERN_MAP: [RegExp, string | null][] = [
+// Known error patterns → user-friendly messages, per locale. Swedish stays the
+// first key because server-side callers (cron, background jobs, logs) default
+// to 'sv'. A `null` entry means the text is extracted from the raw error
+// instead: the period-lock DB trigger emits its sentence in Swedish, so no
+// static table can hold it (see tryMatchKnownError).
+const ERROR_PATTERN_MAP: [RegExp, { sv: string; no: string } | null][] = [
   [
     /reason must be 500 characters or fewer/i,
-    'Motiveringen får vara högst 500 tecken.',
+    { sv: 'Motiveringen får vara högst 500 tecken.', no: 'Begrunnelsen kan være høyst 500 tegn.' },
   ],
   [
     /locked\/closed fiscal period/i,
-    'Perioden är låst. Verifikationen kan inte skapas i en stängd eller låst period.',
+    {
+      sv: 'Perioden är låst. Verifikationen kan inte skapas i en stängd eller låst period.',
+      no: 'Perioden er låst. Bilaget kan ikke opprettes i en stengt eller låst periode.',
+    },
   ],
   [
     /Bokföringen är låst t\.o\.m\./,
-    null, // null = extract the Swedish message directly from the raw error text
+    null, // null = extract the message directly from the raw error text
   ],
   [
     /Period is already closed/i,
-    'Perioden är redan stängd: bokslutet är genomfört och perioden kan inte öppnas igen.',
+    {
+      sv: 'Perioden är redan stängd: bokslutet är genomfört och perioden kan inte öppnas igen.',
+      no: 'Perioden er allerede stengt: regnskapsavslutningen er gjennomført og perioden kan ikke åpnes igjen.',
+    },
   ],
   [
     /Period is already locked/i,
-    'Perioden är redan låst.',
+    { sv: 'Perioden är redan låst.', no: 'Perioden er allerede låst.' },
   ],
   [
     /Cannot attach documents to entries in a locked/i,
-    'Kan inte bifoga dokument till verifikationer i en låst period.',
+    {
+      sv: 'Kan inte bifoga dokument till verifikationer i en låst period.',
+      no: 'Kan ikke legge ved dokumenter til bilag i en låst periode.',
+    },
   ],
   [
     /Entry date .+ is outside fiscal period/i,
-    'Datumet ligger utanför det valda räkenskapsåret.',
+    {
+      sv: 'Datumet ligger utanför det valda räkenskapsåret.',
+      no: 'Datoen ligger utenfor det valgte regnskapsåret.',
+    },
   ],
   [
     /Only company owners and admins can delete vouchers/i,
-    'Endast ägare och administratörer kan radera verifikationer.',
+    {
+      sv: 'Endast ägare och administratörer kan radera verifikationer.',
+      no: 'Bare eiere og administratorer kan slette bilag.',
+    },
   ],
   [
     /Journal entry not found/i,
-    'Verifikationen kunde inte hittas.',
+    { sv: 'Verifikationen kunde inte hittas.', no: 'Bilaget kunne ikke finnes.' },
   ],
   [
     /Only posted entries can be deleted/i,
-    'Endast bokförda verifikationer kan raderas.',
+    {
+      sv: 'Endast bokförda verifikationer kan raderas.',
+      no: 'Bare bokførte bilag kan slettes.',
+    },
   ],
   [
     /Cannot delete voucher in a closed fiscal period/i,
-    'Verifikationen kan inte raderas: räkenskapsåret är stängt.',
+    {
+      sv: 'Verifikationen kan inte raderas: räkenskapsåret är stängt.',
+      no: 'Bilaget kan ikke slettes: regnskapsåret er stengt.',
+    },
   ],
   [
     /Cannot delete voucher in a locked fiscal period/i,
-    'Verifikationen kan inte raderas: perioden är låst.',
+    {
+      sv: 'Verifikationen kan inte raderas: perioden är låst.',
+      no: 'Bilaget kan ikke slettes: perioden er låst.',
+    },
   ],
   [
     /Cannot delete: other entries reference this voucher/i,
-    'Verifikationen kan inte raderas eftersom andra verifikationer (t.ex. storno eller rättelse) refererar till den.',
+    {
+      sv: 'Verifikationen kan inte raderas eftersom andra verifikationer (t.ex. storno eller rättelse) refererar till den.',
+      no: 'Bilaget kan ikke slettes fordi andre bilag (for eksempel storno eller rettelse) refererer til det.',
+    },
   ],
   [
     /timed out after \d+m?s/i,
-    'Anslutningen mot tjänsten tog för lång tid. Försök igen.',
+    {
+      sv: 'Anslutningen mot tjänsten tog för lång tid. Försök igen.',
+      no: 'Tilkoblingen til tjenesten tok for lang tid. Prøv igjen.',
+    },
   ],
   [
     /already has a journal entry/i,
-    'Transaktionen är redan bokförd. Ångra kategoriseringen om du vill ändra den.',
+    {
+      sv: 'Transaktionen är redan bokförd. Ångra kategoriseringen om du vill ändra den.',
+      no: 'Transaksjonen er allerede bokført. Angre kategoriseringen hvis du vil endre den.',
+    },
   ],
   [
     // GoTrue rejects supabase.auth.signUp with this when the installation
     // runs with disable_signup (closed self-hosted instances). The invitee
     // cannot fix it themselves: point them to whoever runs the installation.
     /signups? not allowed/i,
-    'Kontoregistrering är avstängd på den här installationen. Kontakta den som bjöd in dig eller din administratör för att få ett konto.',
+    {
+      sv: 'Kontoregistrering är avstängd på den här installationen. Kontakta den som bjöd in dig eller din administratör för att få ett konto.',
+      no: 'Kontoregistrering er slått av på denne installasjonen. Kontakt den som inviterte deg, eller administratoren din, for å få en konto.',
+    },
   ],
   [
     // GoTrue could not send its own mail (admin invite, confirmation,
     // recovery): almost always missing SMTP configuration on self-hosted.
     /error sending (invite|confirmation|recovery|magic link|email change) email/i,
-    'E-postmeddelandet kunde inte skickas av autentiseringstjänsten. Kontrollera installationens SMTP-inställningar och försök igen.',
+    {
+      sv: 'E-postmeddelandet kunde inte skickas av autentiseringstjänsten. Kontrollera installationens SMTP-inställningar och försök igen.',
+      no: 'E-postmeldingen kunne ikke sendes av autentiseringstjenesten. Kontroller installasjonens SMTP-innstillinger og prøv igjen.',
+    },
   ],
 ]
 
 /**
- * Check if a message matches a known error pattern and return the Swedish translation.
+ * Check if a message matches a known error pattern and return the user-facing
+ * message in the requested locale. Swedish is the fallback for every locale
+ * but 'no', which is exactly the behavior server-side callers rely on.
  * Returns null if no pattern matches.
  */
-function tryMatchKnownError(message: string): string | null {
+function tryMatchKnownError(message: string, locale: ErrorLocale = 'sv'): string | null {
   for (const [pattern, translation] of ERROR_PATTERN_MAP) {
     if (pattern.test(message)) {
-      if (translation !== null) return translation
-      // Extract the Swedish part from the message
-      const match = message.match(/Bokföringen är låst t\.o\.m\. [^.]+\./)
+      if (translation !== null) return translation[locale === 'no' ? 'no' : 'sv']
+      // The period-lock DB trigger emits its sentence in Swedish. Reuse the
+      // date it carries and wrap it in the requested language rather than
+      // shipping Swedish prose into a Norwegian UI.
+      const match = message.match(/Bokföringen är låst t\.o\.m\. ([^.]+)\./)
+      if (locale === 'no') {
+        return match
+          ? `Bokføringen er låst t.o.m. ${match[1]}.`
+          : 'Bokføringen er låst for denne perioden.'
+      }
       return match ? match[0] : 'Bokföringen är låst för denna period.'
     }
   }
@@ -269,6 +338,101 @@ export function looksLikeUserFacingSwedish(message: string): boolean {
   const weak = new Set<string>()
   for (const m of text.matchAll(SWEDISH_WEAK_RE)) weak.add(m[2].toLowerCase())
   return weak.size >= 2
+}
+
+/**
+ * Norwegian bokmål counterpart of the Swedish word lists above. STRONG words
+ * are unambiguous (Swedish spells them differently: "inte", "blir" -> "ble",
+ * "endast" -> "bare"), WEAK ones are shared function words. Deliberately
+ * absent: "og", "er", "til", "for", "av", "som", "kan", "har" — Norwegian and
+ * Swedish spell them the same, so they carry no signal.
+ */
+const NORWEGIAN_STRONG_WORDS = [
+  'ikke', 'blir', 'ble', 'bare', 'selv', 'noe', 'hva', 'jeg', 'mulig', 'følger',
+  'finnes', 'mangler', 'gjelder', 'inneholder', 'kreves', 'kunne', 'prøv', 'igjen',
+  'lagre', 'lagret', 'endre', 'endret', 'slette', 'slettet', 'opprette', 'hente',
+  'lukke', 'åpne', 'tilgang', 'bilag', 'mva', 'regnskap', 'beløp', 'leverandør',
+  'stengt', 'låst', 'ugyldig', 'opplysning', 'opplysninger', 'foretak', 'mislyktes',
+  'avvist', 'vennligst', 'kun', 'også', 'allerede', 'aldri', 'flere',
+]
+const NORWEGIAN_WEAK_WORDS = [
+  'til', 'fra', 'ved', 'etter', 'før', 'over', 'mot', 'denne', 'dette', 'disse',
+  'samme', 'minst', 'høyst', 'din', 'ditt', 'dine', 'her', 'der', 'kan', 'skal',
+  'må', 'vil', 'har', 'er', 'av', 'som', 'for', 'med', 'på', 'om', 'men',
+]
+const NORWEGIAN_STRONG_RE = wordListRe(NORWEGIAN_STRONG_WORDS, 'iu')
+const NORWEGIAN_WEAK_RE = wordListRe(NORWEGIAN_WEAK_WORDS, 'giu')
+
+/**
+ * Whether a free-text string reads as a Norwegian bokmål sentence written for
+ * the user. Same shape and threshold as looksLikeUserFacingSwedish: ø/æ or any
+ * STRONG word counts 2, each distinct WEAK word 1, pass at 2. "Ingen bilag
+ * funnet for perioden." and "Kunne ikke lagre bilaget." pass; "Failed to fetch
+ * customer" and "TypeError: x is not a function" do not.
+ */
+export function looksLikeUserFacingNorwegian(message: string): boolean {
+  const text = message.trim()
+  if (!text) return false
+  if (TECHNICAL_LEAK_PATTERNS.some((p) => p.test(text))) return false
+  if (/[øæØÆ]/.test(text)) return true
+  if (NORWEGIAN_STRONG_RE.test(text)) return true
+  const weak = new Set<string>()
+  for (const m of text.matchAll(NORWEGIAN_WEAK_RE)) weak.add(m[2].toLowerCase())
+  return weak.size >= 2
+}
+
+/**
+ * Whether a route's free-text `error` / `message` string is a user-facing
+ * message that should be shown as-is, in the caller's locale.
+ *
+ * For Norwegian the Norwegian test is tried first, then the Swedish one: the
+ * accounting engine still composes its free text in Swedish (the DB triggers
+ * and the domain errors do), and a specific sentence in the wrong language
+ * beats the generic fallback it would otherwise be replaced with. Making the
+ * engine emit Norwegian is the follow-up; until then this keeps the detail.
+ */
+function isUserFacingMessage(message: string, locale: ErrorLocale): boolean {
+  if (locale === 'no') return isNorwegianUserMessage(message) || isSwedishUserMessage(message)
+  return isSwedishUserMessage(message)
+}
+
+/**
+ * Whether a free-text string is a user-facing Norwegian message. Mirrors
+ * isSwedishUserMessage: the keyword list is the original shape, and
+ * looksLikeUserFacingNorwegian is the general second way in.
+ */
+export function isNorwegianUserMessage(message: string): boolean {
+  const norwegianPatterns = [
+    /kunne ikke/i,
+    /kan ikke/i,
+    /finnes ikke/i,
+    /allerede/i,
+    /låst/i,
+    /prøv igjen/i,
+    /ugyldig/i,
+    /mangler/i,
+    /kreves/i,
+    /må /i,
+    /noe gikk galt/i,
+    /valideringsfeil/i,
+    /korriger/i,
+    /bankopplysninger/i,
+    /tilgang/i,
+    /økten/i,
+    /forespørsel/i,
+    /obligatorisk/i,
+    /er låst/i,
+    /felt/i,
+    /verdi/i,
+    /feilaktig/i,
+    /for (lang|kort|stor|liten|mange|få)/i,
+    /bankgiro/i,
+    /fødselsnummer/i,
+    /kontonummer/i,
+    /bilag/i,
+    /importer|importen/i,
+  ]
+  return norwegianPatterns.some((p) => p.test(message)) || looksLikeUserFacingNorwegian(message)
 }
 
 /**
@@ -390,8 +554,17 @@ export function getErrorMessage(
 
   // 1. If it's a string, check if it's already Swedish or matches a known pattern
   if (typeof error === 'string' && error.trim()) {
-    if (isSwedishUserMessage(error)) return error
-    const knownError = tryMatchKnownError(error)
+    // Norwegian asks the pattern map first. The engine composes its free text
+    // in Swedish, and a sentence that HAS a Norwegian counterpart ("Bokföringen
+    // är låst t.o.m. …") would otherwise be recognised as Swedish user-facing
+    // text and passed through untranslated. Swedish and English keep the
+    // upstream order exactly.
+    if (locale === 'no') {
+      const knownError = tryMatchKnownError(error, locale)
+      if (knownError) return knownError
+    }
+    if (isUserFacingMessage(error, locale)) return error
+    const knownError = tryMatchKnownError(error, locale)
     if (knownError) return knownError
   }
 
@@ -465,14 +638,24 @@ export function getErrorMessage(
             const source = typeof item.sourceAccount === 'string' && /^\d{1,40}$/.test(item.sourceAccount)
               ? item.sourceAccount : null
             if (item.message === ACCOUNT_NUMBER_MESSAGE) {
-              const label = source ? (locale === 'en' ? `Source account ${source}` : `Källkonto ${source}`) : field
+              const label = source
+                ? locale === 'en'
+                  ? `Source account ${source}`
+                  : locale === 'no'
+                  ? `Kildekonto ${source}`
+                  : `Källkonto ${source}`
+                : field
               const message = /^accounts\.\d+\.number$/.test(field)
                 ? locale === 'en'
                   ? 'The account could not be created. Select a target account with exactly four digits in the account mapping step.'
+                  : locale === 'no'
+                  ? 'Kontoen kunne ikke opprettes. Velg en målkonto med nøyaktig fire sifre i kontomappingen.'
                   : 'Kontot kunde inte skapas. Välj ett målkonto med exakt fyra siffror i kontomappningen.'
                 : field.endsWith('targetAccount')
                 ? locale === 'en'
                   ? 'The target account must have exactly four digits. Select an account in the account mapping step.'
+                  : locale === 'no'
+                  ? 'Målkontoen må ha nøyaktig fire sifre. Velg en konto i kontomappingen.'
                   : 'Målkontot måste ha exakt fyra siffror. Välj ett konto i kontomappningen.'
                 : locale === 'en' ? 'The account number must contain four digits.' : ACCOUNT_NUMBER_MESSAGE
               return [label ? `${label}: ${message}` : message]
@@ -484,7 +667,7 @@ export function getErrorMessage(
           if (messages.length) {
             const remaining = messages.length - 3
             return messages.slice(0, 3).join(' ') + (remaining > 0
-              ? ` (+${remaining} ${locale === 'en' ? 'more' : 'till'})` : '')
+              ? ` (+${remaining} ${locale === 'en' ? 'more' : locale === 'no' ? 'flere' : 'till'})` : '')
           }
         }
       }
@@ -516,51 +699,79 @@ export function getErrorMessage(
 
       if (structured.code === 'ACCOUNTS_NOT_IN_CHART' && Array.isArray(structured.account_numbers)) {
         const numbers = structured.account_numbers as string[]
-        return `Följande konton behöver aktiveras: ${numbers.join(', ')}`
+        return loc(
+          `Följande konton behöver aktiveras: ${numbers.join(', ')}`,
+          `Følgende kontoer må aktiveres: ${numbers.join(', ')}`,
+          locale,
+        )
       }
 
       if (structured.code === 'JOURNAL_ENTRY_NOT_BALANCED') {
         const details = structured.details as { totalDebit?: number; totalCredit?: number } | undefined
         if (details && typeof details.totalDebit === 'number' && typeof details.totalCredit === 'number') {
-          return `Verifikationen balanserar inte (${formatCurrency(details.totalDebit)} debet vs ${formatCurrency(details.totalCredit)} kredit).`
+          return loc(
+            `Verifikationen balanserar inte (${formatCurrency(details.totalDebit)} debet vs ${formatCurrency(details.totalCredit)} kredit).`,
+            `Bilaget balanserer ikke (${formatCurrency(details.totalDebit)} debet mot ${formatCurrency(details.totalCredit)} kredit).`,
+            locale,
+          )
         }
-        return 'Verifikationen balanserar inte. Kontrollera att debet och kredit är lika stora.'
+        return loc(
+          'Verifikationen balanserar inte. Kontrollera att debet och kredit är lika stora.',
+          'Bilaget balanserer ikke. Kontroller at debet og kredit er like store.',
+          locale,
+        )
       }
 
       if (structured.code === 'JOURNAL_LINE_NEGATIVE_AMOUNT') {
-        return 'En verifikationsrad har ett negativt belopp. Boka beloppet på motsatt sida i stället.'
+        return loc(
+          'En verifikationsrad har ett negativt belopp. Boka beloppet på motsatt sida i stället.',
+          'En bilagslinje har et negativt beløp. Bokfør beløpet på motsatt side i stedet.',
+          locale,
+        )
       }
 
       if (structured.code === 'JOURNAL_LINE_BOTH_SIDES_NONZERO') {
-        return 'En verifikationsrad kan inte ha både debet och kredit nollskilda.'
+        return loc(
+          'En verifikationsrad kan inte ha både debet och kredit nollskilda.',
+          'En bilagslinje kan ikke ha både debet og kredit ulik null.',
+          locale,
+        )
       }
 
       if (structured.code === 'FISCAL_PERIOD_NOT_FOUND') {
-        return 'Räkenskapsperioden kunde inte hittas.'
+        return loc('Räkenskapsperioden kunde inte hittas.', 'Regnskapsperioden kunne ikke finnes.', locale)
       }
 
       if (structured.code === 'ENTRY_DATE_OUTSIDE_FISCAL_PERIOD') {
-        return 'Datumet ligger utanför det valda räkenskapsåret.'
+        return loc('Datumet ligger utanför det valda räkenskapsåret.', 'Datoen ligger utenfor det valgte regnskapsåret.', locale)
       }
 
       if (structured.code === 'JOURNAL_ENTRY_NOT_FOUND') {
-        return 'Verifikationen kunde inte hittas.'
+        return loc('Verifikationen kunde inte hittas.', 'Bilaget kunne ikke finnes.', locale)
       }
 
       if (structured.code === 'CANNOT_REVERSE_NON_POSTED') {
-        return 'Endast bokförda verifikationer kan stornas.'
+        return loc('Endast bokförda verifikationer kan stornas.', 'Bare bokførte bilag kan stornes.', locale)
       }
 
       if (structured.code === 'CANNOT_CORRECT_NON_POSTED') {
-        return 'Endast bokförda verifikationer kan rättas.'
+        return loc('Endast bokförda verifikationer kan rättas.', 'Bare bokførte bilag kan rettes.', locale)
       }
 
       if (structured.code === 'ENTRY_ALREADY_REVERSED') {
-        return 'Verifikationen har redan stornats av en annan användare. Ladda om sidan och försök igen.'
+        return loc(
+          'Verifikationen har redan stornats av en annan användare. Ladda om sidan och försök igen.',
+          'Bilaget er allerede stornert av en annen bruker. Last inn siden på nytt og prøv igjen.',
+          locale,
+        )
       }
 
       if (structured.code === 'CURRENCY_REVALUATION_ALREADY_EXISTS') {
-        return 'En valutaomvärdering finns redan för denna period.'
+        return loc(
+          'En valutaomvärdering finns redan för denna period.',
+          'En valutaomvurdering finnes allerede for denne perioden.',
+          locale,
+        )
       }
 
       if (structured.code === 'FX_CLOSING_RATE_UNAVAILABLE') {
@@ -574,11 +785,19 @@ export function getErrorMessage(
               .map((m) => `${m.currency as string} per ${m.date as string}`)
           : []
         const what = missing.length > 0 ? missing.join(', ') : 'balansdagen'
-        return `Ingen valutakurs från Riksbanken finns för ${what}. Valutaomvärderingen har inte bokförts: en uppskattad kurs får inte bokföras mot 3960/7960. Försök igen när kursen är publicerad.`
+        return loc(
+          `Ingen valutakurs från Riksbanken finns för ${what}. Valutaomvärderingen har inte bokförts: en uppskattad kurs får inte bokföras mot 3960/7960. Försök igen när kursen är publicerad.`,
+          `Ingen valutakurs fra Norges Bank finnes for ${what}. Valutaomvurderingen er ikke bokført: en anslått kurs kan ikke bokføres mot 3960/7960. Prøv igjen når kursen er publisert.`,
+          locale,
+        )
       }
 
       if (structured.code === 'INVALID_MAPPING_RESULT') {
-        return 'Kontering saknas för transaktionen. Kontrollera bokföringsreglerna.'
+        return loc(
+          'Kontering saknas för transaktionen. Kontrollera bokföringsreglerna.',
+          'Kontering mangler for transaksjonen. Kontroller bokføringsreglene.',
+          locale,
+        )
       }
 
       if (structured.code === 'DIMENSION_VALIDATION_FAILED') {
@@ -592,40 +811,80 @@ export function getErrorMessage(
         if (typeof structured.message === 'string' && structured.message.trim()) {
           return structured.message
         }
-        return 'Ett angivet kostnadsställe/projekt finns inte i dimensionsregistret eller är arkiverat. Skapa värdet i registret först.'
+        return loc(
+          'Ett angivet kostnadsställe/projekt finns inte i dimensionsregistret eller är arkiverat. Skapa värdet i registret först.',
+          'Et angitt kostnadssted/prosjekt finnes ikke i dimensjonsregisteret eller er arkivert. Opprett verdien i registeret først.',
+          locale,
+        )
       }
 
       if (structured.code === 'NO_OPEN_PERIOD_FOR_DATE') {
-        return 'Det finns ingen räkenskapsperiod som täcker det valda datumet. Skapa eller öppna räkenskapsåret först.'
+        return loc(
+          'Det finns ingen räkenskapsperiod som täcker det valda datumet. Skapa eller öppna räkenskapsåret först.',
+          'Det finnes ingen regnskapsperiode som dekker den valgte datoen. Opprett eller åpne regnskapsåret først.',
+          locale,
+        )
       }
 
       if (structured.code === 'TARGET_PERIOD_CLOSED') {
-        return 'Räkenskapsåret för det valda datumet är stängt (bokslut) och kan inte återöppnas. Bokför rättelsen i innevarande period istället.'
+        return loc(
+          'Räkenskapsåret för det valda datumet är stängt (bokslut) och kan inte återöppnas. Bokför rättelsen i innevarande period istället.',
+          'Regnskapsåret for den valgte datoen er stengt (regnskapsavslutning) og kan ikke gjenåpnes. Bokfør rettelsen i inneværende periode i stedet.',
+          locale,
+        )
       }
 
       if (structured.code === 'TARGET_PERIOD_LOCKED') {
         const details = structured.details as { lockDate?: string } | undefined
         return details?.lockDate
-          ? `Räkenskapsperioden för det valda datumet är låst (t.o.m. ${details.lockDate}). Lås upp perioden för att flytta verifikationen dit.`
-          : 'Räkenskapsperioden för det valda datumet är låst. Lås upp perioden för att flytta verifikationen dit.'
+          ? loc(
+              `Räkenskapsperioden för det valda datumet är låst (t.o.m. ${details.lockDate}). Lås upp perioden för att flytta verifikationen dit.`,
+              `Regnskapsperioden for den valgte datoen er låst (t.o.m. ${details.lockDate}). Lås opp perioden for å flytte bilaget dit.`,
+              locale,
+            )
+          : loc(
+              'Räkenskapsperioden för det valda datumet är låst. Lås upp perioden för att flytta verifikationen dit.',
+              'Regnskapsperioden for den valgte datoen er låst. Lås opp perioden for å flytte bilaget dit.',
+              locale,
+            )
       }
 
       if (structured.code === 'OB_COMPANY_LOCK_DATE') {
         const details = structured.details as { lockDate?: string } | undefined
         return details?.lockDate
-          ? `Bokföringen är låst t.o.m. ${details.lockDate} och ingående balanser kan inte korrigeras. Ta bort eller flytta låsdatumet under Inställningar → Bokföring och försök igen.`
-          : 'Bokföringen är låst av företagets låsdatum och ingående balanser kan inte korrigeras. Ta bort eller flytta låsdatumet under Inställningar → Bokföring och försök igen.'
+          ? loc(
+              `Bokföringen är låst t.o.m. ${details.lockDate} och ingående balanser kan inte korrigeras. Ta bort eller flytta låsdatumet under Inställningar → Bokföring och försök igen.`,
+              `Bokføringen er låst t.o.m. ${details.lockDate} og inngående balanser kan ikke korrigeres. Fjern eller flytt låsedatoen under Innstillinger → Bokføring og prøv igjen.`,
+              locale,
+            )
+          : loc(
+              'Bokföringen är låst av företagets låsdatum och ingående balanser kan inte korrigeras. Ta bort eller flytta låsdatumet under Inställningar → Bokföring och försök igen.',
+              'Bokføringen er låst av foretakets låsedato og inngående balanser kan ikke korrigeres. Fjern eller flytt låsedatoen under Innstillinger → Bokføring og prøv igjen.',
+              locale,
+            )
       }
 
       if (structured.code === 'MEANINGLESS_CORRECTION') {
         const details = structured.details as { reason?: string } | undefined
         if (details?.reason === 'no_date_change') {
-          return 'Det nya datumet är samma som det nuvarande: det finns inget att flytta.'
+          return loc(
+            'Det nya datumet är samma som det nuvarande: det finns inget att flytta.',
+            'Den nye datoen er den samme som den nåværende: det er ingenting å flytte.',
+            locale,
+          )
         }
         if (details?.reason === 'identical_to_original') {
-          return 'Rättelsen är identisk med originalverifikationen: inget har ändrats.'
+          return loc(
+            'Rättelsen är identisk med originalverifikationen: inget har ändrats.',
+            'Rettelsen er identisk med originalbilaget: ingenting er endret.',
+            locale,
+          )
         }
-        return 'Rättelsen saknar ekonomisk innebörd: varje konto netto till noll. En rättelse måste beskriva en faktisk affärshändelse (BFL 5 kap. 5 §).'
+        return loc(
+          'Rättelsen saknar ekonomisk innebörd: varje konto netto till noll. En rättelse måste beskriva en faktisk affärshändelse (BFL 5 kap. 5 §).',
+          'Rettelsen mangler økonomisk innhold: hver konto netto til null. En rettelse må beskrive en faktisk forretningshendelse (regnskapsloven § 5-1).',
+          locale,
+        )
       }
 
       if (structured.code === 'CORRECTION_CHAIN_TOO_DEEP') {
@@ -634,12 +893,24 @@ export function getErrorMessage(
           | undefined
         const depthPart =
           typeof details?.depth === 'number'
-            ? `Kedjan är redan ${details.depth} nivåer djup`
-            : 'Rättelsekedjan är redan flera nivåer djup'
+            ? loc(
+                `Kedjan är redan ${details.depth} nivåer djup`,
+                `Kjeden er allerede ${details.depth} nivåer dyp`,
+                locale,
+              )
+            : loc('Rättelsekedjan är redan flera nivåer djup', 'Rettelseskjeden er allerede flere nivåer dyp', locale)
         const rootPart = details?.chainRootVoucher
-          ? ` (ursprungsverifikat ${details.chainRootVoucher})`
+          ? loc(
+              ` (ursprungsverifikat ${details.chainRootVoucher})`,
+              ` (opprinnelig bilag ${details.chainRootVoucher})`,
+              locale,
+            )
           : ''
-        return `${depthPart}${rootPart}. Räkna ut nettoeffekten av hela kedjan och gör EN rättelse istället, eller skicka allow_deep_chain=true för att rätta ändå.`
+        return loc(
+          `${depthPart}${rootPart}. Räkna ut nettoeffekten av hela kedjan och gör EN rättelse istället, eller skicka allow_deep_chain=true för att rätta ändå.`,
+          `${depthPart}${rootPart}. Regn ut nettoeffekten av hele kjeden og gjør ÉN rettelse i stedet, eller send allow_deep_chain=true for å rette likevel.`,
+          locale,
+        )
       }
 
       if (structured.code === 'BOOKKEEPING_DATABASE_ERROR') {
@@ -647,10 +918,19 @@ export function getErrorMessage(
         // trigger). Try the known-pattern map before falling back to the
         // generic "kunde inte sparas" message.
         if (typeof structured.message === 'string') {
-          const matched = tryMatchKnownError(structured.message)
+          const matched = tryMatchKnownError(structured.message, locale)
           if (matched) return matched
         }
-        return 'Verifikationen kunde inte sparas. Försök igen.'
+        return loc('Verifikationen kunde inte sparas. Försök igen.', 'Bilaget kunne ikke lagres. Prøv igjen.', locale)
+      }
+
+      // Norwegian UI: a known code resolves to the registry's message_no. This
+      // sits after every dynamic branch above, so a lock date or an amount still
+      // wins over the static text, and it deliberately ignores thrown_message_sv,
+      // whose runtime text is composed in Swedish at the throw site.
+      if (locale === 'no' && typeof structured.code === 'string') {
+        const entry = getErrorEntry(structured.code)
+        if (entry?.message_no) return entry.message_no
       }
 
       if (locale === 'en' && typeof structured.message_en === 'string' && structured.message_en.trim()) {
@@ -682,7 +962,9 @@ export function getErrorMessage(
     ) {
       const items = (obj.details as string[]).map((d) => d.trim())
       const shown = items.slice(0, 5).join(' • ')
-      const more = items.length > 5 ? ` (+${items.length - 5} till)` : ''
+      const more = items.length > 5
+      ? ` (+${items.length - 5} ${locale === 'no' ? 'flere' : 'till'})`
+      : ''
       const lead = typeof obj.error === 'string' && obj.error.trim() ? `${obj.error.trim()}: ` : ''
       return `${lead}${shown}${more}`
     }
@@ -699,26 +981,26 @@ export function getErrorMessage(
     // Try known error patterns (e.g. locked period triggers)
     for (const field of ['error', 'message'] as const) {
       if (typeof obj[field] === 'string' && obj[field].trim()) {
-        const knownError = tryMatchKnownError(obj[field])
+        const knownError = tryMatchKnownError(obj[field], locale)
         if (knownError) return knownError
       }
     }
 
     // Try error.message if it's already a good Swedish message
     if (typeof obj.error === 'string' && obj.error.trim()) {
-      if (isSwedishUserMessage(obj.error)) return obj.error
+      if (isUserFacingMessage(obj.error, locale)) return obj.error
     }
 
     if (typeof obj.message === 'string' && obj.message.trim()) {
-      if (isSwedishUserMessage(obj.message)) return obj.message
+      if (isUserFacingMessage(obj.message, locale)) return obj.message
     }
   }
 
   // 3. Error instance
   if (error instanceof Error && error.message.trim()) {
-    const knownError = tryMatchKnownError(error.message)
+    const knownError = tryMatchKnownError(error.message, locale)
     if (knownError) return knownError
-    if (isSwedishUserMessage(error.message)) return error.message
+    if (isUserFacingMessage(error.message, locale)) return error.message
   }
 
   // 4. HTTP status code map
@@ -743,44 +1025,66 @@ export function getErrorMessage(
 // Handelsbanken corporate fullmakt failures). Known codes get a Swedish
 // explanation; the raw provider description is appended in parentheses so
 // the underlying error still reaches the user (and a screenshot to support).
-const BANK_CONNECTION_ERROR_MAP: Record<string, string> = {
-  server_error:
-    'Banken kunde inte slutföra godkännandet på grund av ett fel på bankens sida. Försök igen om en stund. Gäller det företagskonton kan banken kräva en fullmakt innan kopplingen godkänns.',
-  temporarily_unavailable:
-    'Bankens anslutningstjänst är tillfälligt otillgänglig. Försök igen om en stund.',
-  invalid_request:
-    'Banken avvisade anslutningsförfrågan som ogiltig. Försök igen, och kontakta supporten om felet kvarstår.',
+const BANK_CONNECTION_ERROR_MAP: Record<string, SvNo> = {
+  server_error: {
+    sv: 'Banken kunde inte slutföra godkännandet på grund av ett fel på bankens sida. Försök igen om en stund. Gäller det företagskonton kan banken kräva en fullmakt innan kopplingen godkänns.',
+    no: 'Banken kunne ikke fullføre godkjenningen på grunn av en feil på bankens side. Prøv igjen om litt. Gjelder det foretakskontoer, kan banken kreve en fullmakt før koblingen godkjennes.',
+  },
+  temporarily_unavailable: {
+    sv: 'Bankens anslutningstjänst är tillfälligt otillgänglig. Försök igen om en stund.',
+    no: 'Bankens tilkoblingstjeneste er midlertidig utilgjengelig. Prøv igjen om litt.',
+  },
+  invalid_request: {
+    sv: 'Banken avvisade anslutningsförfrågan som ogiltig. Försök igen, och kontakta supporten om felet kvarstår.',
+    no: 'Banken avviste tilkoblingsforespørselen som ugyldig. Prøv igjen, og kontakt supporten hvis feilen vedvarer.',
+  },
   // Internal callback tokens (not from the bank) that were previously shown raw.
-  invalid_state:
-    'Anslutningsförsöket kunde inte matchas mot ett pågående försök. Det kan hända om försöket tog för lång tid eller om ett nytt försök startades under tiden. Starta bankkopplingen på nytt.',
-  missing_parameters:
-    'Banken skickade ett ofullständigt svar tillbaka. Starta bankkopplingen på nytt.',
-  invalid_code_format:
-    'Banken skickade ett ogiltigt svar tillbaka. Starta bankkopplingen på nytt.',
+  invalid_state: {
+    sv: 'Anslutningsförsöket kunde inte matchas mot ett pågående försök. Det kan hända om försöket tog för lång tid eller om ett nytt försök startades under tiden. Starta bankkopplingen på nytt.',
+    no: 'Tilkoblingsforsøket kunne ikke matches mot et pågående forsøk. Det kan skje hvis forsøket tok for lang tid, eller hvis et nytt forsøk ble startet i mellomtiden. Start bankkoblingen på nytt.',
+  },
+  missing_parameters: {
+    sv: 'Banken skickade ett ofullständigt svar tillbaka. Starta bankkopplingen på nytt.',
+    no: 'Banken sendte et ufullstendig svar tilbake. Start bankkoblingen på nytt.',
+  },
+  invalid_code_format: {
+    sv: 'Banken skickade ett ogiltigt svar tillbaka. Starta bankkopplingen på nytt.',
+    no: 'Banken sendte et ugyldig svar tilbake. Start bankkoblingen på nytt.',
+  },
 }
 
-const BANK_CONNECTION_CANCELLED_MESSAGE =
-  'Anslutningen avbröts hos banken innan den slutfördes. Ingen bankkoppling skapades. Försök igen och slutför alla steg hos banken.'
+const BANK_CONNECTION_CANCELLED_MESSAGE: SvNo = {
+  sv: 'Anslutningen avbröts hos banken innan den slutfördes. Ingen bankkoppling skapades. Försök igen och slutför alla steg hos banken.',
+  no: 'Tilkoblingen ble avbrutt hos banken før den ble fullført. Ingen bankkobling ble opprettet. Prøv igjen og fullfør alle stegene hos banken.',
+}
 
 // The bank refused the login itself. For a company account this is almost
 // always a missing or unlinked open banking permission (fullmakt) for the
 // person logging in: Handelsbanken reports an unlinked "API Företag" fullmakt
 // as access_denied "Invalid credentials" (seen from 2026-09-14), which used
 // to read as "you cancelled" and sent people back to retry the same thing.
-const BANK_CONNECTION_INVALID_CREDENTIALS_MESSAGE =
-  'Banken godkände inte inloggningen. Gäller det företagskonton behöver personen som loggar in ha bankens fullmakt för öppna API:er (open banking) kopplad till sig innan anslutningen kan godkännas. Kontrollera fullmakten hos banken och försök igen.'
+const BANK_CONNECTION_INVALID_CREDENTIALS_MESSAGE: SvNo = {
+  sv: 'Banken godkände inte inloggningen. Gäller det företagskonton behöver personen som loggar in ha bankens fullmakt för öppna API:er (open banking) kopplad till sig innan anslutningen kan godkännas. Kontrollera fullmakten hos banken och försök igen.',
+  no: 'Banken godkjente ikke innloggingen. Gjelder det foretakskontoer, må personen som logger inn ha bankens fullmakt for åpne API-er (open banking) knyttet til seg før tilkoblingen kan godkjennes. Kontroller fullmakten hos banken og prøv igjen.',
+}
 
 // The login worked but the bank has not opened account information to it:
 // SEB answers "You cannot retrieve account information, please ask PSU to
 // contact bank". Retrying cannot help; the bank has to enable access.
-const BANK_CONNECTION_ACCOUNT_ACCESS_MESSAGE =
-  'Banken har inte gett den här inloggningen tillgång till kontoinformation. Be banken aktivera åtkomst via öppna API:er (open banking) för kontot och försök sedan igen.'
+const BANK_CONNECTION_ACCOUNT_ACCESS_MESSAGE: SvNo = {
+  sv: 'Banken har inte gett den här inloggningen tillgång till kontoinformation. Be banken aktivera åtkomst via öppna API:er (open banking) för kontot och försök sedan igen.',
+  no: 'Banken har ikke gitt denne innloggingen tilgang til kontoinformasjon. Be banken aktivere tilgang via åpne API-er (open banking) for kontoen, og prøv deretter igjen.',
+}
 
-const BANK_CONNECTION_SESSION_EXPIRED_MESSAGE =
-  'Bankens inloggningssession hann gå ut innan anslutningen slutfördes. Starta bankkopplingen på nytt och slutför alla steg hos banken direkt.'
+const BANK_CONNECTION_SESSION_EXPIRED_MESSAGE: SvNo = {
+  sv: 'Bankens inloggningssession hann gå ut innan anslutningen slutfördes. Starta bankkopplingen på nytt och slutför alla steg hos banken direkt.',
+  no: 'Bankens innloggingsøkt utløp før tilkoblingen ble fullført. Start bankkoblingen på nytt og fullfør alle stegene hos banken med en gang.',
+}
 
-const BANK_CONNECTION_FALLBACK_MESSAGE =
-  'Banken avvisade anslutningen. Försök igen, och kontakta supporten om felet kvarstår.'
+const BANK_CONNECTION_FALLBACK_MESSAGE: SvNo = {
+  sv: 'Banken avvisade anslutningen. Försök igen, och kontakta supporten om felet kvarstår.',
+  no: 'Banken avviste tilkoblingen. Prøv igjen, og kontakt supporten hvis feilen vedvarer.',
+}
 
 // Same shape the callback route keys its expired-vs-error decision on.
 const BANK_SESSION_EXPIRY_PATTERN =
@@ -832,13 +1136,17 @@ export function classifyBankConnectionDenial(
 
 /**
  * Map a PSD2 authorization callback outcome (OAuth error code plus optional
- * provider description) to a Swedish user message. Always Swedish: the bank
- * redirect carries no locale, and bank-connection surfaces follow the
- * user-facing-errors-are-Swedish rule.
+ * provider description) to a user-facing message.
+ *
+ * Defaults to Swedish because the bank redirect carries no locale, and the
+ * server-side callers (logging, the public error catalogue) rely on Swedish.
+ * Callers that know the visitor's locale pass it, so a Norwegian session is
+ * not handed Swedish prose about the bank connection.
  */
 export function getBankConnectionErrorMessage(
   errorCode: string,
-  errorDescription?: string | null
+  errorDescription?: string | null,
+  locale: ErrorLocale = 'sv',
 ): string {
   const code = errorCode.trim()
   const description = errorDescription?.trim() || null
@@ -848,23 +1156,24 @@ export function getBankConnectionErrorMessage(
   // User cancelled at the bank: an expected outcome, keep it clean without
   // echoing the provider text back.
   if (denial === 'cancelled') {
-    return BANK_CONNECTION_CANCELLED_MESSAGE
+    return pickSvNo(BANK_CONNECTION_CANCELLED_MESSAGE, locale)
   }
   // The two denial shapes a retry cannot fix get their own explanation. The
   // bank's own sentence still rides along in parentheses (support reads it
   // off the screenshot).
   if (denial === 'invalid_credentials') {
-    return `${BANK_CONNECTION_INVALID_CREDENTIALS_MESSAGE} (${description})`
+    return `${pickSvNo(BANK_CONNECTION_INVALID_CREDENTIALS_MESSAGE, locale)} (${description})`
   }
   if (denial === 'account_access') {
-    return `${BANK_CONNECTION_ACCOUNT_ACCESS_MESSAGE} (${description})`
+    return `${pickSvNo(BANK_CONNECTION_ACCOUNT_ACCESS_MESSAGE, locale)} (${description})`
   }
 
   let base: string
   if (BANK_SESSION_EXPIRY_PATTERN.test(combined)) {
-    base = BANK_CONNECTION_SESSION_EXPIRED_MESSAGE
+    base = pickSvNo(BANK_CONNECTION_SESSION_EXPIRED_MESSAGE, locale)
   } else {
-    base = BANK_CONNECTION_ERROR_MAP[code] ?? BANK_CONNECTION_FALLBACK_MESSAGE
+    const known = BANK_CONNECTION_ERROR_MAP[code]
+    base = pickSvNo(known ?? BANK_CONNECTION_FALLBACK_MESSAGE, locale)
   }
 
   // Surface the underlying provider error: without it the user (and support,
@@ -875,6 +1184,7 @@ export function getBankConnectionErrorMessage(
 const PROVIDER_REASON_PREFIX: Bilingual = {
   sv: 'Leverantörens svar',
   en: 'Provider response',
+  no: 'Leverandørens svar',
 }
 
 /**
@@ -899,7 +1209,10 @@ export function getProviderResourceForbiddenMessage(
   locale: ErrorLocale = 'sv',
 ): string {
   const entry = getErrorEntry('PROVIDER_RESOURCE_FORBIDDEN')!
-  const base = pick({ sv: entry.message_sv, en: entry.message_en }, locale)
+  const base = pick(
+    { sv: entry.message_sv, en: entry.message_en, no: entry.message_no },
+    locale,
+  )
   const detail = reason?.trim()
   return detail ? `${base} ${pick(PROVIDER_REASON_PREFIX, locale)}: "${detail}"` : base
 }

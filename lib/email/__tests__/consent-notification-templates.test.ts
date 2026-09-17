@@ -26,16 +26,16 @@ describe('consent expiry email templates', () => {
     const text = generateConsentExpiryEmailText(expired)
     const { appName } = getBranding()
 
-    expect(html).toContain(`Med vänliga hälsningar,<br>\n          <strong>${appName}</strong>`)
-    expect(text).toContain(`Med vänliga hälsningar,\n${appName}`)
-    expect(html).not.toContain('Med vänliga hälsningar,<br>\n          <strong>Glimworks')
+    expect(html).toContain(`Med vennlig hilsen,<br>\n          <strong>${appName}</strong>`)
+    expect(text).toContain(`Med vennlig hilsen,\n${appName}`)
+    expect(html).not.toContain('Med vennlig hilsen,<br>\n          <strong>Glimworks')
   })
 
   it('uses no alarm colors in the chrome', () => {
     for (const data of [expired, expiringSoon]) {
       const html = generateConsentExpiryEmailHtml(data)
       expect(html).not.toMatch(/#dc2626|#ea580c|#ef4444|#b91c1c/i)
-      expect(html).not.toContain('Åtgärd krävs')
+      expect(html).not.toContain('Handling kreves')
     }
   })
 
@@ -53,9 +53,9 @@ describe('consent expiry email templates', () => {
     const html = generateConsentExpiryEmailHtml(expired)
     const text = generateConsentExpiryEmailText(expired)
     const { supportEmail } = getBranding()
-    expect(html).toContain('Du får det här mejlet eftersom')
+    expect(html).toContain('Du får denne e-posten fordi')
     expect(html).toContain(supportEmail)
-    expect(text).toContain('Du får det här mejlet eftersom')
+    expect(text).toContain('Du får denne e-posten fordi')
     expect(text).toContain(supportEmail)
   })
 
@@ -63,28 +63,28 @@ describe('consent expiry email templates', () => {
     const data = { ...expired, companyName: '' }
     const html = generateConsentExpiryEmailHtml(data)
     const text = generateConsentExpiryEmailText(data)
-    expect(html).not.toContain('Företag')
-    expect(html).not.toContain('för </')
-    expect(text).not.toContain('Företag:')
-    expect(generateConsentExpiryEmailSubject(data)).toBe('Förnya bankkopplingen till SEB')
+    expect(html).not.toContain('Foretak')
+    expect(html).not.toContain('for </')
+    expect(text).not.toContain('Foretak:')
+    expect(generateConsentExpiryEmailSubject(data)).toBe('Forny bankkoblingen til SEB')
   })
 
   it('generates calm, specific subjects', () => {
     expect(generateConsentExpiryEmailSubject(expired)).toBe(
-      'Förnya bankkopplingen till SEB - Glimworks AB'
+      'Forny bankkoblingen til SEB - Glimworks AB'
     )
     expect(generateConsentExpiryEmailSubject(expiringSoon)).toBe(
-      'Bankkopplingen till SEB löper ut om 3 dagar - Glimworks AB'
+      'Bankkoblingen til SEB utløper om 3 dager - Glimworks AB'
     )
     expect(generateConsentExpiryEmailSubject({ ...expiringSoon, daysUntilExpiry: 1 })).toBe(
-      'Bankkopplingen till SEB löper ut om 1 dag - Glimworks AB'
+      'Bankkoblingen til SEB utløper om 1 dag - Glimworks AB'
     )
   })
 
   it('pluralizes days in the expiring-soon body', () => {
     const html = generateConsentExpiryEmailHtml({ ...expiringSoon, daysUntilExpiry: 1 })
-    expect(html).toContain('löper ut om 1 dag')
+    expect(html).toContain('utløper om 1 dag')
     const html3 = generateConsentExpiryEmailHtml(expiringSoon)
-    expect(html3).toContain('löper ut om 3 dagar')
+    expect(html3).toContain('utløper om 3 dager')
   })
 })

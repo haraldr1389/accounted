@@ -307,6 +307,7 @@ function entryFor(code: string): StructuredErrorEntry {
     getErrorEntry('INTERNAL_ERROR') ?? {
       httpStatus: 500,
       message_sv: 'Något gick fel. Försök igen.',
+      message_no: 'Noe gikk galt. Prøv igjen.',
       message_en: 'Internal server error.',
     }
   )

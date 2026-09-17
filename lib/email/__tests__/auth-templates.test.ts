@@ -7,12 +7,12 @@ const URL_EXAMPLE_HTML = URL_EXAMPLE.replace(/&/g, '&amp;')
 
 describe('buildAuthEmail', () => {
   it.each([
-    ['signup', 'Bekräfta din e-postadress'],
-    ['recovery', 'Återställ ditt lösenord'],
-    ['magiclink', 'Din inloggningslänk'],
-    ['invite', 'Du har blivit inbjuden'],
-    ['email_change', 'Bekräfta din nya e-postadress'],
-    ['email_change_current', 'Godkänn ändrad e-postadress'],
+    ['signup', 'Bekreft e-postadressen din'],
+    ['recovery', 'Tilbakestill passordet ditt'],
+    ['magiclink', 'Innloggningslenken din'],
+    ['invite', 'Du har blitt invitert'],
+    ['email_change', 'Bekreft den nye e-postadressen din'],
+    ['email_change_current', 'Godkjenn endret e-postadresse'],
   ] as const)('renders %s with the brand app name and action link', (actionType, subject) => {
     const mail = buildAuthEmail({
       actionType,
@@ -56,8 +56,8 @@ describe('buildAuthEmail', () => {
         appName: 'Siffra',
         actionUrl: URL_EXAMPLE,
       })
-      expect(mail.text).toContain('två mail')
-      expect(mail.text).toContain('länken i båda')
+      expect(mail.text).toContain('to e-poster')
+      expect(mail.text).toContain('lenken i begge')
     }
   })
 
@@ -67,10 +67,10 @@ describe('buildAuthEmail', () => {
       appName: 'Siffra',
       otpCode: '123456',
     })
-    expect(mail.subject).toBe('Din verifieringskod')
+    expect(mail.subject).toBe('Verifiseringskoden din')
     expect(mail.html).toContain('123456')
     expect(mail.html).not.toContain('<a href')
-    expect(mail.text).toContain('Kod: 123456')
+    expect(mail.text).toContain('Kode: 123456')
   })
 
   it('renders the BankID signup confirmation with the ignore-and-stay-inactive note', () => {
@@ -82,12 +82,12 @@ describe('buildAuthEmail', () => {
       appName: 'Siffra',
       actionUrl: 'https://app.siffra.se/auth/callback?token_hash=abc&type=magiclink',
     })
-    expect(mail.subject).toBe('Bekräfta din e-postadress')
+    expect(mail.subject).toBe('Bekreft e-postadressen din')
     expect(mail.text).toContain('BankID')
     expect(mail.text).toContain('Siffra')
-    expect(mail.text).toContain('förblir inaktivt')
+    expect(mail.text).toContain('forblir inaktiv')
     expect(mail.text).toContain(
-      'Bekräfta e-postadress: https://app.siffra.se/auth/callback?token_hash=abc&type=magiclink',
+      'Bekreft e-postadressen: https://app.siffra.se/auth/callback?token_hash=abc&type=magiclink',
     )
     expect(mail.html).toContain('type=magiclink')
     expect(mail.html).not.toMatch(/accounted/i)
@@ -99,7 +99,7 @@ describe('buildAuthEmail', () => {
       appName: 'Siffra',
       actionUrl: URL_EXAMPLE,
     })
-    expect(mail.subject).toBe('Bekräfta din åtgärd')
+    expect(mail.subject).toBe('Bekreft handlingen din')
     expect(mail.html).toContain(URL_EXAMPLE_HTML)
   })
 

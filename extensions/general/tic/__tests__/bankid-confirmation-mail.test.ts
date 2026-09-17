@@ -87,7 +87,7 @@ describe('sendBankIdSignupConfirmation', () => {
     expect(sendEmailMock).toHaveBeenCalledTimes(1)
     const mail = sendEmailMock.mock.calls[0][0]
     expect(mail.to).toBe('fresh@example.com')
-    expect(mail.subject).toBe('Bekräfta din e-postadress')
+    expect(mail.subject).toBe('Bekreft e-postadressen din')
     expect(mail.text).toContain(
       'https://app.gnubok.se/auth/callback?token_hash=hashed-123&type=magiclink',
     )

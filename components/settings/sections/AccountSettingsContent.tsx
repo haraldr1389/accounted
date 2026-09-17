@@ -179,6 +179,7 @@ export function AccountSettingsContent() {
   const localeLabels: Record<Locale, string> = {
     sv: tCommon('language_swedish'),
     en: tCommon('language_english'),
+    no: tCommon('language_norwegian'),
   }
 
   const paletteLabels: Record<Palette, string> = {

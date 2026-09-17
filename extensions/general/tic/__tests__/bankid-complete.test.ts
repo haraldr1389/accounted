@@ -570,7 +570,7 @@ describe('POST /bankid/complete', () => {
 
       expect(status).toBe(403)
       expect(body.error).toBe('email_unconfirmed')
-      expect(body.message).toMatch(/^Bekräfta din e-postadress först/)
+      expect(body.message).toMatch(/^Bekreft e-postadressen din først/)
       expect(raw).not.toContain('tokenHash')
       expect(admin.generateLink).not.toHaveBeenCalled()
       expect(sendBankIdSignupConfirmation).toHaveBeenCalledWith(

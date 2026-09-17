@@ -141,7 +141,7 @@ describe('POST /api/auth/email-hook', () => {
     expect(sendEmailMock).toHaveBeenCalledTimes(1)
     const options = sendEmailMock.mock.calls[0][0]
     expect(options.to).toBe('user@example.se')
-    expect(options.subject).toBe('Återställ ditt lösenord')
+    expect(options.subject).toBe('Tilbakestill passordet ditt')
     expect(options.fromName).toBeUndefined()
     expect(options.fromAddress).toBeUndefined()
     expect(options.replyTo).toBeUndefined()
@@ -229,7 +229,7 @@ describe('POST /api/auth/email-hook', () => {
       ),
     )
     const options = sendEmailMock.mock.calls[0][0]
-    expect(options.subject).toBe('Din verifieringskod')
+    expect(options.subject).toBe('Verifiseringskoden din')
     expect(options.text).toContain('424242')
     expect(options.text).not.toContain('token_hash=')
   })

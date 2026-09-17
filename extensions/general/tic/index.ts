@@ -123,7 +123,7 @@ async function refusePendingLogin(
     {
       error: 'email_unconfirmed',
       message:
-        'Bekräfta din e-postadress först. Vi har skickat ett nytt bekräftelsemail till adressen du angav när kontot skapades.',
+        'Bekreft e-postadressen din først. Vi har sendt en ny bekreftelsesmelding til adressen du oppgav da kontoen ble opprettet.',
     },
     { status: 403 }
   )

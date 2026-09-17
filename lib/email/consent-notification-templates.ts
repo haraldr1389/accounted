@@ -24,7 +24,7 @@ const SERIF = `Georgia, 'Times New Roman', serif`
 const SANS = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`
 
 function dagar(n: number): string {
-  return `${n} ${n === 1 ? 'dag' : 'dagar'}`
+  return `${n} ${n === 1 ? 'dag' : 'dager'}`
 }
 
 /**
@@ -35,23 +35,23 @@ export function generateConsentExpiryEmailHtml(data: ConsentExpiryEmailData): st
   const { appName, supportEmail } = getBranding()
 
   const title = isExpired
-    ? 'Bankkopplingen behöver förnyas'
-    : `Bankkopplingen löper ut om ${dagar(daysUntilExpiry)}`
+    ? 'Bankkoblingen må fornyes'
+    : `Bankkoblingen utløper om ${dagar(daysUntilExpiry)}`
 
   const intro = isExpired
-    ? `Banksamtycket för <strong>${bankName}</strong> har löpt ut och den automatiska hämtningen av nya transaktioner är pausad.`
-    : `Banksamtycket för <strong>${bankName}</strong> löper ut om ${dagar(daysUntilExpiry)}.`
+    ? `Banksamtykket for <strong>${bankName}</strong> har utløpt, og den automatiske hentingen av nye transaksjoner er satt på pause.`
+    : `Banksamtykket for <strong>${bankName}</strong> utløper om ${dagar(daysUntilExpiry)}.`
 
   const explanation =
-    'Det här är väntat: av säkerhetsskäl gäller ett banksamtycke (PSD2) bara en begränsad tid, och därefter behöver det godkännas på nytt hos banken.'
+    'Dette er forventet: av sikkerhetsgrunner gjelder et banksamtykke (PSD2) bare i en begrenset tid, og deretter må det godkjennes på nytt hos banken.'
 
   const consequence = isExpired
-    ? 'Ingenting har försvunnit. Redan hämtade transaktioner och din bokföring påverkas inte, och när kopplingen är förnyad hämtas mellanliggande transaktioner ikapp.'
-    : 'Förnya gärna i förväg så fortsätter transaktionerna att hämtas utan avbrott. Din bokföring påverkas inte.'
+    ? 'Ingenting er borte. Transaksjoner som allerede er hentet, og bokføringen din, påvirkes ikke, og når koblingen er fornyet, hentes mellomliggende transaksjoner inn igjen.'
+    : 'Forny gjerne i forkant, så fortsetter transaksjonene å hentes uten avbrudd. Bokføringen din påvirkes ikke.'
 
   return `
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="nb">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -80,7 +80,7 @@ export function generateConsentExpiryEmailHtml(data: ConsentExpiryEmailData): st
         </tr>
         ${companyName ? `
         <tr>
-          <td style="padding: 8px 0; border-top: 1px solid #ececea; border-bottom: 1px solid #ececea; color: #9ca3af;">Företag</td>
+          <td style="padding: 8px 0; border-top: 1px solid #ececea; border-bottom: 1px solid #ececea; color: #9ca3af;">Foretak</td>
           <td style="padding: 8px 0; border-top: 1px solid #ececea; border-bottom: 1px solid #ececea; color: #111111;">${companyName}</td>
         </tr>
         ` : ''}
@@ -88,23 +88,23 @@ export function generateConsentExpiryEmailHtml(data: ConsentExpiryEmailData): st
 
       <div style="margin-bottom: 12px;">
         <a href="${renewalUrl}" style="display: inline-block; background: #1a1a1a; color: #ffffff; padding: 12px 26px; border-radius: 99px; text-decoration: none; font-weight: 500; font-size: 14px;">
-          Förnya bankkopplingen
+          Forny bankkoblingen
         </a>
       </div>
 
       <p style="margin: 0 0 32px 0; font-size: 13px; color: #9ca3af;">
-        Knappen leder till ${renewalUrl}.<br>
-        Du kan också logga in som vanligt och gå till Inställningar och sedan Bank.
+        Knappen fører til ${renewalUrl}.<br>
+        Du kan også logge inn som vanlig og gå til Innstillinger og deretter Bank.
       </p>
 
       <div style="padding-top: 20px; border-top: 1px solid #ececea;">
         <p style="margin: 0 0 12px 0; font-size: 14px; color: #374151;">
-          Med vänliga hälsningar,<br>
+          Med vennlig hilsen,<br>
           <strong>${appName}</strong>
         </p>
         <p style="margin: 0; font-size: 12.5px; color: #9ca3af;">
-          Du får det här mejlet eftersom det finns en bankkoppling i ${appName}${companyName ? ` för ${companyName}` : ''}.
-          Undrar du något? Mejla <a href="mailto:${supportEmail}" style="color: #6b7280;">${supportEmail}</a>.
+          Du får denne e-posten fordi det finnes en bankkobling i ${appName}${companyName ? ` for ${companyName}` : ''}.
+          Har du spørsmål? Send e-post til <a href="mailto:${supportEmail}" style="color: #6b7280;">${supportEmail}</a>.
         </p>
       </div>
     </div>
@@ -124,28 +124,28 @@ export function generateConsentExpiryEmailText(data: ConsentExpiryEmailData): st
   let text = ''
 
   if (isExpired) {
-    text += `Bankkopplingen behöver förnyas\n\n`
-    text += `Banksamtycket för ${bankName} har löpt ut och den automatiska hämtningen av nya transaktioner är pausad.\n\n`
+    text += `Bankkoblingen må fornyes\n\n`
+    text += `Banksamtykket for ${bankName} har utløpt, og den automatiske hentingen av nye transaksjoner er satt på pause.\n\n`
   } else {
-    text += `Bankkopplingen löper ut om ${dagar(daysUntilExpiry)}\n\n`
-    text += `Banksamtycket för ${bankName} löper ut om ${dagar(daysUntilExpiry)}.\n\n`
+    text += `Bankkoblingen utløper om ${dagar(daysUntilExpiry)}\n\n`
+    text += `Banksamtykket for ${bankName} utløper om ${dagar(daysUntilExpiry)}.\n\n`
   }
 
-  text += `Det här är väntat: av säkerhetsskäl gäller ett banksamtycke (PSD2) bara en begränsad tid, och därefter behöver det godkännas på nytt hos banken.\n\n`
+  text += `Dette er forventet: av sikkerhetsgrunner gjelder et banksamtykke (PSD2) bare i en begrenset tid, og deretter må det godkjennes på nytt hos banken.\n\n`
 
   if (isExpired) {
-    text += `Ingenting har försvunnit. Redan hämtade transaktioner och din bokföring påverkas inte, och när kopplingen är förnyad hämtas mellanliggande transaktioner ikapp.\n\n`
+    text += `Ingenting er borte. Transaksjoner som allerede er hentet, og bokføringen din, påvirkes ikke, og når koblingen er fornyet, hentes mellomliggende transaksjoner inn igjen.\n\n`
   } else {
-    text += `Förnya gärna i förväg så fortsätter transaktionerna att hämtas utan avbrott. Din bokföring påverkas inte.\n\n`
+    text += `Forny gjerne i forkant, så fortsetter transaksjonene å hentes uten avbrudd. Bokføringen din påvirkes ikke.\n\n`
   }
 
   text += `Bank: ${bankName}\n`
-  if (companyName) text += `Företag: ${companyName}\n`
-  text += `\nFörnya bankkopplingen: ${renewalUrl}\n`
-  text += `Du kan också logga in som vanligt och gå till Inställningar och sedan Bank.\n\n`
-  text += `Med vänliga hälsningar,\n`
+  if (companyName) text += `Foretak: ${companyName}\n`
+  text += `\nForny bankkoblingen: ${renewalUrl}\n`
+  text += `Du kan også logge inn som vanlig og gå til Innstillinger og deretter Bank.\n\n`
+  text += `Med vennlig hilsen,\n`
   text += `${appName}\n\n`
-  text += `Du får det här mejlet eftersom det finns en bankkoppling i ${appName}${companyName ? ` för ${companyName}` : ''}. Undrar du något? Mejla ${supportEmail}.\n`
+  text += `Du får denne e-posten fordi det finnes en bankkobling i ${appName}${companyName ? ` for ${companyName}` : ''}. Har du spørsmål? Send e-post til ${supportEmail}.\n`
 
   return text
 }
@@ -156,7 +156,7 @@ export function generateConsentExpiryEmailText(data: ConsentExpiryEmailData): st
 export function generateConsentExpiryEmailSubject(data: ConsentExpiryEmailData): string {
   const suffix = data.companyName ? ` - ${data.companyName}` : ''
   if (data.isExpired) {
-    return `Förnya bankkopplingen till ${data.bankName}${suffix}`
+    return `Forny bankkoblingen til ${data.bankName}${suffix}`
   }
-  return `Bankkopplingen till ${data.bankName} löper ut om ${dagar(data.daysUntilExpiry)}${suffix}`
+  return `Bankkoblingen til ${data.bankName} utløper om ${dagar(data.daysUntilExpiry)}${suffix}`
 }

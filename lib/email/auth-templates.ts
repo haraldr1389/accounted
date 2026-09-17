@@ -1,7 +1,7 @@
 /**
  * Auth mail templates for the Supabase Send Email hook (WL-05, WL-13).
  *
- * Swedish-only, like the other user-facing mail templates in lib/email/
+ * Norwegian-only, like the other user-facing mail templates in lib/email/
  * (see .claude/rules/i18n.md): these are transactional mails, not UI chrome,
  * so they deliberately do not go through next-intl.
  *
@@ -31,50 +31,50 @@ interface AuthEmailContent {
 
 const CONTENT: Record<AuthEmailActionType, AuthEmailContent> = {
   signup: {
-    subject: 'Bekräfta din e-postadress',
-    heading: 'Bekräfta din e-postadress',
+    subject: 'Bekreft e-postadressen din',
+    heading: 'Bekreft e-postadressen din',
     body: (appName) =>
-      `Klicka på knappen nedan för att bekräfta din e-postadress och slutföra din registrering hos ${appName}.`,
-    cta: 'Bekräfta e-postadress',
+      `Klikk på knappen nedenfor for å bekrefte e-postadressen din og fullføre registreringen hos ${appName}.`,
+    cta: 'Bekreft e-postadressen',
   },
   recovery: {
-    subject: 'Återställ ditt lösenord',
-    heading: 'Återställ ditt lösenord',
+    subject: 'Tilbakestill passordet ditt',
+    heading: 'Tilbakestill passordet ditt',
     body: (appName) =>
-      `Vi har tagit emot en begäran om att återställa lösenordet för ditt konto hos ${appName}. Klicka på knappen nedan för att välja ett nytt lösenord.`,
-    cta: 'Återställ lösenord',
+      `Vi har mottatt en forespørsel om å tilbakestille passordet til kontoen din hos ${appName}. Klikk på knappen nedenfor for å velge et nytt passord.`,
+    cta: 'Tilbakestill passordet',
   },
   magiclink: {
-    subject: 'Din inloggningslänk',
-    heading: 'Logga in',
-    body: (appName) => `Klicka på knappen nedan för att logga in hos ${appName}.`,
-    cta: 'Logga in',
+    subject: 'Innloggningslenken din',
+    heading: 'Logg inn',
+    body: (appName) => `Klikk på knappen nedenfor for å logge inn hos ${appName}.`,
+    cta: 'Logg inn',
   },
   invite: {
-    subject: 'Du har blivit inbjuden',
-    heading: 'Du har blivit inbjuden',
+    subject: 'Du har blitt invitert',
+    heading: 'Du har blitt invitert',
     body: (appName) =>
-      `Du har blivit inbjuden till ${appName}. Klicka på knappen nedan för att skapa ditt konto.`,
-    cta: 'Acceptera inbjudan',
+      `Du har blitt invitert til ${appName}. Klikk på knappen nedenfor for å opprette kontoen din.`,
+    cta: 'Godta invitasjonen',
   },
   email_change: {
-    subject: 'Bekräfta din nya e-postadress',
-    heading: 'Bekräfta din nya e-postadress',
+    subject: 'Bekreft den nye e-postadressen din',
+    heading: 'Bekreft den nye e-postadressen din',
     body: (appName) =>
-      `Klicka på knappen nedan för att bekräfta din nya e-postadress hos ${appName}. Av säkerhetsskäl skickas två mail, ett till din nya adress och ett till din nuvarande. Bytet slutförs först när du klickat på länken i båda.`,
-    cta: 'Bekräfta ny e-postadress',
+      `Klikk på knappen nedenfor for å bekrefte den nye e-postadressen din hos ${appName}. Av sikkerhetsgrunner sendes to e-poster, én til den nye adressen din og én til din nåværende. Endringen fullføres først når du har klikket på lenken i begge.`,
+    cta: 'Bekreft ny e-postadresse',
   },
   email_change_current: {
-    subject: 'Godkänn ändrad e-postadress',
-    heading: 'Godkänn ändrad e-postadress',
+    subject: 'Godkjenn endret e-postadresse',
+    heading: 'Godkjenn endret e-postadresse',
     body: (appName) =>
-      `En ändring av e-postadressen för ditt konto hos ${appName} har begärts. Klicka på knappen nedan för att godkänna ändringen från din nuvarande adress. Av säkerhetsskäl skickas två mail, ett till din nuvarande adress och ett till din nya. Bytet slutförs först när du klickat på länken i båda.`,
-    cta: 'Godkänn ändringen',
+      `Det er bedt om en endring av e-postadressen til kontoen din hos ${appName}. Klikk på knappen nedenfor for å godkjenne endringen fra din nåværende adresse. Av sikkerhetsgrunner sendes to e-poster, én til din nåværende adresse og én til din nye. Endringen fullføres først når du har klikket på lenken i begge.`,
+    cta: 'Godkjenn endringen',
   },
   reauthentication: {
-    subject: 'Din verifieringskod',
-    heading: 'Din verifieringskod',
-    body: (appName) => `Ange koden nedan för att bekräfta din identitet hos ${appName}.`,
+    subject: 'Verifiseringskoden din',
+    heading: 'Verifiseringskoden din',
+    body: (appName) => `Skriv inn koden nedenfor for å bekrefte identiteten din hos ${appName}.`,
     cta: '',
   },
   // Sent by the BankID signup (extensions/general/tic) to the address the
@@ -85,11 +85,11 @@ const CONTENT: Record<AuthEmailActionType, AuthEmailContent> = {
   // whose address was typed by mistake (or on purpose) is not nudged into
   // activating someone else's BankID login.
   bankid_signup: {
-    subject: 'Bekräfta din e-postadress',
-    heading: 'Bekräfta din e-postadress',
+    subject: 'Bekreft e-postadressen din',
+    heading: 'Bekreft e-postadressen din',
     body: (appName) =>
-      `Ett konto hos ${appName} har skapats med BankID och den här e-postadressen. Klicka på knappen nedan för att bekräfta att adressen är din och aktivera kontot. Om det inte var du som skapade kontot kan du bortse från det här meddelandet: kontot förblir inaktivt och kan inte användas för att logga in.`,
-    cta: 'Bekräfta e-postadress',
+      `En konto hos ${appName} er opprettet med BankID og denne e-postadressen. Klikk på knappen nedenfor for å bekrefte at adressen er din og aktivere kontoen. Hvis det ikke var du som opprettet kontoen, kan du se bort fra denne meldingen: kontoen forblir inaktiv og kan ikke brukes til å logge inn.`,
+    cta: 'Bekreft e-postadressen',
   },
 }
 
@@ -97,13 +97,13 @@ const CONTENT: Record<AuthEmailActionType, AuthEmailContent> = {
 // add new mail classes) still produces a usable mail with the verify link
 // rather than dropping the send.
 const FALLBACK_CONTENT: AuthEmailContent = {
-  subject: 'Bekräfta din åtgärd',
-  heading: 'Bekräfta din åtgärd',
-  body: (appName) => `Klicka på knappen nedan för att fortsätta hos ${appName}.`,
-  cta: 'Fortsätt',
+  subject: 'Bekreft handlingen din',
+  heading: 'Bekreft handlingen din',
+  body: (appName) => `Klikk på knappen nedenfor for å fortsette hos ${appName}.`,
+  cta: 'Fortsett',
 }
 
-const IGNORE_NOTE = 'Om du inte begärde detta kan du bortse från det här meddelandet.'
+const IGNORE_NOTE = 'Hvis du ikke ba om dette, kan du se bort fra denne meldingen.'
 
 export interface AuthEmailInput {
   actionType: string
@@ -146,7 +146,7 @@ export function buildAuthEmail(input: AuthEmailInput): AuthEmail {
 
   const html = `
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="nb">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -177,7 +177,7 @@ ${action}
 
   let text = `${content.heading}\n\n${body}\n\n`
   if (input.otpCode) {
-    text += `Kod: ${input.otpCode}\n\n`
+    text += `Kode: ${input.otpCode}\n\n`
   } else if (input.actionUrl) {
     text += `${content.cta}: ${input.actionUrl}\n\n`
   }

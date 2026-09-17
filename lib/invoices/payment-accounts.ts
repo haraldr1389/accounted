@@ -165,11 +165,12 @@ export function hasRequiredInvoicePaymentAccount(
  */
 export function describeMissingInvoicePaymentAccount(
   currency: Currency,
-): { sv: string; en: string } {
+): { sv: string; en: string; no: string } {
   if (currency === 'SEK') {
     return {
       sv: 'Fakturan saknar betalningsuppgifter: företaget har inget bankgiro, plusgiro, Swish-nummer eller bankkonto att skriva på fakturan. Lägg till ett under Inställningar → Fakturering och försök igen.',
       en: 'The invoice has no payment details: the company has no bankgiro, plusgiro, Swish number or bank account to print on the invoice. Add one under Inställningar → Fakturering (Settings → Invoicing) and try again.',
+      no: 'Fakturaen mangler betalingsinformasjon: foretaket har ingen bankgiro, plusgiro, Swish-nummer eller bankkonto å skrive på fakturaen. Legg til en under Innstillinger → Fakturering og prøv igjen.',
     }
   }
   const routingSv = isNonIbanCurrency(currency)
@@ -178,9 +179,13 @@ export function describeMissingInvoicePaymentAccount(
   const routingEn = isNonIbanCurrency(currency)
     ? `, or with ${currency === 'USD' ? 'routing number' : 'sort code'}, account number and BIC,`
     : ''
+  const routingNo = isNonIbanCurrency(currency)
+    ? `, eller med ${currency === 'USD' ? 'routing number' : 'sort code'}, kontonummer og BIC,`
+    : ''
   return {
     sv: `Fakturan är i ${currency}, men företaget saknar ett betalningskonto för ${currency}. Lägg till ett konto med IBAN${routingSv} för ${currency} under Inställningar → Fakturering och försök igen.`,
     en: `The invoice is in ${currency}, but the company has no ${currency} payment account. Add an account with an IBAN${routingEn} for ${currency} under Inställningar → Fakturering (Settings → Invoicing) and try again.`,
+    no: `Fakturaen er i ${currency}, men foretaket mangler en betalingskonto for ${currency}. Legg til en konto med IBAN${routingNo} for ${currency} under Innstillinger → Fakturering og prøv igjen.`,
   }
 }
 
