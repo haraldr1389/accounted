@@ -3,6 +3,15 @@
 // fail compilation there until each site has an answer for it.
 export type EntityType = 'enskild_firma' | 'aktiebolag' | 'ideell_forening'
 
+// Which national accounting regime a company is subject to. Everything that
+// differs by country is data, not engine logic: which chart of accounts is
+// seeded, which VAT declaration closes a period, which annual-report framework
+// applies, which identifier formats are valid. Every jurisdiction-dependent
+// fact goes through lib/company/jurisdiction.ts (byJurisdiction): adding a
+// member here must fail compilation there until each site has an answer.
+// Sweden is the default so that no existing tenant changes books.
+export type Jurisdiction = 'se' | 'no'
+
 // Swedish accounting framework. K2 (BFNAR 2016:10) is the default simplified
 // ruleset for smaller AB; K3 (BFNAR 2012:1) is the principles-based ruleset
 // required for medium-to-large AB and permitted voluntarily for smaller ones.
