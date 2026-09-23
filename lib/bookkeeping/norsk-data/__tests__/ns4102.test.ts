@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  NS4102_AKSJESELSKAP,
+  NS4102_ENKTELTPERSONFORETAK,
   NS4102_IS_COMPLETE,
+  NS4102_NON_POSTABLE_ACCOUNTS,
   NS4102_REFERENCE,
+  NS4102_UNRESOLVED_NAMES,
   ns4102AccountName,
+  ns4102ChartFor,
 } from '@/lib/bookkeeping/norsk-data/ns4102'
 
 describe('NS 4102 chart', () => {
@@ -74,11 +79,92 @@ describe('NS 4102 chart', () => {
     expect(ns4102AccountName('1234567')).toBeNull()
   })
 
-  it('is marked incomplete while class 8 is missing', () => {
-    // Not a tidy placeholder: a company seeded from this chart cannot post interest,
-    // currency results or tax. If class 8 lands, this flag flips and this test flips.
-    expect(NS4102_IS_COMPLETE).toBe(false)
+  it('seeds class 8 so interest, currency results and tax have an account', () => {
+    // The flag and the chart have to agree. A chart that seeds while a whole class is
+    // missing is the failure this test used to protect, and the same discipline now
+    // requires class 8 to actually be present.
+    expect(NS4102_IS_COMPLETE).toBe(true)
     const class8 = NS4102_REFERENCE.filter((a) => a.account_class === 8)
-    expect(class8.length).toBe(0)
+    expect(class8.length).toBeGreaterThan(20)
+    for (const number of ['8050', '8150', '8160', '8300', '8320']) {
+      expect(NS4102_REFERENCE.some((a) => a.account_number === number)).toBe(true)
+    }
+  })
+
+  it('books finance income as income and finance costs as costs', () => {
+    // Class 8 is a mixed class: 80xx is revenue, 81xx and 83xx are costs. Reading the
+    // class instead of the group would book a bank's interest as an expense.
+    for (const number of ['8000', '8030', '8050', '8060', '8400']) {
+      const account = NS4102_REFERENCE.find((a) => a.account_number === number)
+      expect(account?.account_type).toBe('revenue')
+      expect(account?.normal_balance).toBe('credit')
+    }
+    for (const number of ['8100', '8150', '8160', '8300', '8320']) {
+      const account = NS4102_REFERENCE.find((a) => a.account_number === number)
+      expect(account?.account_type).toBe('expense')
+      expect(account?.normal_balance).toBe('debit')
+    }
+  })
+
+  it('keeps the accounts that close a year out of the chart', () => {
+    // The engine closes a period, it does not post a balancing entry to an account
+    // that must then equal a computed total. They are listed in the source and must
+    // not be seeded under any legal form.
+    for (const number of NS4102_NON_POSTABLE_ACCOUNTS) {
+      expect(ns4102AccountName(number)).toBeNull()
+      expect(NS4102_AKSJESELSKAP.some((a) => a.account_number === number)).toBe(false)
+      expect(NS4102_ENKTELTPERSONFORETAK.some((a) => a.account_number === number)).toBe(false)
+    }
+  })
+
+  it('puts the exceptions on the side double entry says, not the side the class says', () => {
+    // An allowance for bad debt sits in the asset class and carries a credit balance.
+    expect(NS4102_AKSJESELSKAP.find((a) => a.account_number === '1580')?.normal_balance).toBe('credit')
+    // A company's own shares reduce equity, so they sit on the debit side.
+    expect(NS4102_AKSJESELSKAP.find((a) => a.account_number === '2010')?.normal_balance).toBe('debit')
+    // Owner's drawings: debit. The owner's deposit, next to it, raises equity.
+    expect(ns4102AccountName('2061')).toBe('Uttak kontanter')
+    expect(NS4102_ENKTELTPERSONFORETAK.find((a) => a.account_number === '2061')?.normal_balance).toBe(
+      'debit',
+    )
+    expect(NS4102_ENKTELTPERSONFORETAK.find((a) => a.account_number === '2062')?.normal_balance).toBe(
+      'credit',
+    )
+  })
+
+  it('gives the two legal forms the accounts that only they have', () => {
+    const as = new Set(NS4102_AKSJESELSKAP.map((a) => a.account_number))
+    const enk = new Set(NS4102_ENKTELTPERSONFORETAK.map((a) => a.account_number))
+    // A sole trader has no share capital, no treasury shares, no dividend and no
+    // general meeting; a limited company has no private drawings.
+    for (const number of ['2000', '2010', '2020', '5300', '5330', '7730']) {
+      expect(as.has(number)).toBe(true)
+      expect(enk.has(number)).toBe(false)
+    }
+    for (const number of ['2061', '2064', '2075', '5950', '7080']) {
+      expect(enk.has(number)).toBe(true)
+      expect(as.has(number)).toBe(false)
+    }
+    // Everything else is shared, which is the point of expressing the difference as a
+    // delta instead of maintaining two lists that can drift.
+    expect(enk.size).toBeGreaterThan(300)
+    expect(as.size).toBeGreaterThan(300)
+  })
+
+  it('renames only the account the two charts disagree about by number', () => {
+    expect(NS4102_AKSJESELSKAP.find((a) => a.account_number === '1900')?.account_name).toBe('Kontanter')
+    expect(NS4102_ENKTELTPERSONFORETAK.find((a) => a.account_number === '1900')?.account_name).toBe(
+      'Kasse/kontanter',
+    )
+    expect(ns4102ChartFor('as')).not.toBe(ns4102ChartFor('enk'))
+  })
+
+  it('states the edition and does not hide the names it could not settle', () => {
+    // The chart is complete; its numbering is one edition behind. A reader finding
+    // this is being told the difference between wrong data and old data.
+    expect(NS4102_UNRESOLVED_NAMES.map((n) => n.account_number)).toContain('2320')
+    for (const entry of NS4102_UNRESOLVED_NAMES) {
+      expect(entry.note.length).toBeGreaterThan(5)
+    }
   })
 })

@@ -1,19 +1,28 @@
 /**
- * NS 4102 — Norsk standard kontoplan, aksjeselskaper.
+ * NS 4102 — Norsk standard kontoplan, both Norwegian legal forms.
  *
- * STATUS — read this before using the chart
+ * SOURCE AND EDITION — read this before using the chart
  *
- * Classes 1–7 below are transcribed from the standard's own numbering and account
- * names. **Class 8 is absent, deliberately.** The finance accounts were not obtained
- * from a source reliable enough to post against, and a chart is exactly the artifact
- * where a plausible wrong number is worse than a missing one: it looks correct, it
- * passes every type check, and then it survives into vouchers and annual reports for
- * years.
+ * Classes 1 through 7 and the class 8 finance block below are transcribed from a
+ * published komprimert NS 4102 listing (jithomassen.no, the aksjeselskaper page of
+ * 2017 and the enkeltpersonforetak page of 2019). That listing carries the numbering
+ * of NS 4102:**2005, which Standard Norge withdrew in November 2023 when it published
+ * NS 4102:2023. The current edition is five digits, adds roughly 254 accounts, moves
+ * production costs into the 40000-series, replaces oppgavepliktig with
+ * innberetningspliktig, and in appendix A maps every single account onto
+ * regnskapslovens oppstillingsplan. None of that is reproduced here because none of
+ * it is available from a free source, and a chart is exactly the artifact where a
+ * plausible wrong number is worse than a missing one.
  *
- * The consequence is real, not cosmetic. A company seeded from this chart can post
- * its balance sheet and its operating result, but it cannot post interest, currency
- * results or tax. Until class 8 lands there is no usable Norwegian chart, which is
- * why `NS4102_IS_COMPLETE` is false and no seeding path may settle for less.
+ * So there is now a usable chart, and the edition is what is still open. It is right
+ * for a service business that books no production costs. `NS4102_EDITION` states that
+ * where a reader or a report generator will actually look. Upgrading it is a data
+ * change and not a semantics change: the class rules, the derivations and the
+ * AS/ENK split below all survive a new table of numbers.
+ *
+ * Two names in the source are doubtful and are NOT silently corrected, they are
+ * listed in {@link NS4102_UNRESOLVED_NAMES} so the next person finds them in the
+ * code rather than in a bank rejection.
  *
  * SHAPE
  *
@@ -67,6 +76,62 @@ const CLASS_RULES = {
 } as const satisfies Record<number, { type: string; balance: string; heading: string }>
 
 /**
+ * Class 8 is the other genuinely mixed class, and it is the one the class rule gets
+ * wrong on its own: 80xx and 84xx are finance income and extraordinary income, while
+ * 81xx, 83xx, 85xx and 86xx are costs. Reading the class alone would book revenue as
+ * an expense, which is exactly the failure this module exists to make impossible.
+ */
+const FINANCE_GROUP_TYPES: Record<string, 'revenue' | 'expense'> = {
+  '80': 'revenue',
+  '81': 'expense',
+  '83': 'expense',
+  '84': 'revenue',
+  '85': 'expense',
+  '86': 'expense',
+}
+
+/**
+ * Accounts whose normal balance is not the one their class implies. The standard does
+ * not state these; double entry does. Deriving them from the class is what would put
+ * an owner's drawing on the wrong side of a voucher and leave a balance-sheet
+ * allowance on the wrong side of the balance.
+ *
+ * `2061` through `2078` exist only in the ENK chart. `2062` is the one that looks
+ * wrong next to its neighbours: an owner's deposit raises equity, so it is credited
+ * even though every account around it is drawn.
+ */
+const CONTRA_ACCOUNT_BALANCES: Record<string, 'debit' | 'credit'> = {
+  '1580': 'credit', // Avsetning tap på fordringer
+  '2010': 'debit', // Egne aksjer
+  '2080': 'debit', // Udekket tap
+  '2061': 'debit',
+  '2062': 'credit',
+  '2063': 'debit',
+  '2064': 'debit',
+  '2065': 'debit',
+  '2066': 'credit', // Motkonto egen bolig i næringsbygg
+  '2067': 'debit',
+  '2068': 'debit',
+  '2069': 'debit',
+  '2071': 'debit',
+  '2072': 'debit',
+  '2075': 'debit',
+  '2077': 'debit',
+  '2078': 'debit',
+}
+
+function normalBalanceOf(accountNumber: string): 'debit' | 'credit' {
+  const override = CONTRA_ACCOUNT_BALANCES[accountNumber]
+  if (override) return override
+  if (accountNumber[0] === '8') {
+    return FINANCE_GROUP_TYPES[accountNumber.slice(0, 2)] === 'revenue' ? 'credit' : 'debit'
+  }
+  return CLASS_RULES[
+    Number(accountNumber[0]) as keyof typeof CLASS_RULES
+  ].balance as 'debit' | 'credit'
+}
+
+/**
  * Class 2 is the one genuinely mixed class: 20xx is equity and 21xx is provisions that
  * present with equity; the rest is debt. Deciding that here is what keeps every row
  * from carrying a type its own numbering already answers.
@@ -75,6 +140,9 @@ function accountTypeOf(digits: string): NorwegianAccountReference['account_type'
   if (digits[0] === '2') {
     const group = digits.slice(0, 2)
     return group === '20' || group === '21' ? 'equity' : 'liability'
+  }
+  if (digits[0] === '8') {
+    return FINANCE_GROUP_TYPES[digits.slice(0, 2)] ?? 'expense'
   }
   return CLASS_RULES[Number(digits[0]) as keyof typeof CLASS_RULES]
     .type as NorwegianAccountReference['account_type']
@@ -147,6 +215,15 @@ const GROUP_HEADINGS: Record<string, string> = {
   '76': 'Lisens- og patentkostnad',
   '77': 'Annen driftskostnad',
   '78': 'Tap',
+  '79': 'Periodiseringskonto',
+  '80': 'Finansinntekt',
+  '81': 'Finanskostnad',
+  '83': 'Skattekostnad på ordinært resultat',
+  '84': 'Ekstraordinær inntekt',
+  '85': 'Ekstraordinær kostnad',
+  '86': 'Skattekostnad på ekstraordinært resultat',
+  '88': 'Årsresultat',
+  '89': 'Overføringer og disponeringer',
 }
 
 /**
@@ -155,7 +232,7 @@ const GROUP_HEADINGS: Record<string, string> = {
  * Names keep the standard's own wording so this reads like the chart any Norwegian
  * auditor or bank will compare it against.
  */
-const CHART_TEXT = `
+const CHART_TEXT_AS = `
 1000 Forskning og utvikling
 1020 Konsesjoner
 1030 Patenter
@@ -466,8 +543,43 @@ const CHART_TEXT = `
 7830 Tap på fordringer
 7860 Tap på kontrakter
 
-// Class 8 is intentionally absent — see the header. A company seeded from this chart
-// cannot post interest, currency results or tax, so it is not a usable chart yet.
+// Class 8 below is the finance block: interest, currency results, tax and the year.
+// It carries the numbering and names of the source listing, nothing else.
+
+7900 Beholdningsendring anlegg under utførelse
+7910 Ukurante varer
+8000 Inntekt på investering i datterselskap
+8010 Inntekt på investering i annet foretak i samme konsern
+8020 Inntekt på investering i tilknyttet selskap
+8030 Renteinntekt på foretak i samme konsern
+8040 Renteinntekter, skattefrie
+8050 Annen renteinntekt
+8060 Valutagevinst (agio)
+8070 Annen finansinntekt
+8080 Verdiøkning finansielle omløpsmidler
+8100 Verdireduksjon finansielle omløpsmidler
+8110 Nedskrivning finansielle omløpsmidler
+8120 Nedskrivning finansielle anleggsmidler
+8130 Rentekostnad foretak i samme konsern
+8140 Rentekostnad, ikke fradragsberettiget
+8150 Annen rentekostnad
+8160 Valutatap (disagio)
+8170 Annen finanskostnad
+8300 Betalbar skatt
+8320 Utsatt skatt
+8400 Ekstraordinær inntekt
+8500 Ekstraordinær kostnad
+8600 Betalbar skatt, ekstraordinært resultat
+8620 Utsatt skatt, ekstraordinært resultat
+8800 Årsresultat
+8900 Overføringsfond vurderingsforskjeller
+8910 Overføringsfond felleseid kapital samme foretak
+8920 Avsatt utbytte/renter grunnfondsbevis
+8930 Konsernbidrag
+8940 Aksjonærbidrag
+8950 Fondsemisjon
+8960 Overføring annen egenkapital
+8990 Udekket tap
 `
 
 /**
@@ -503,8 +615,7 @@ function parseChart(text: string): NorwegianAccountReference[] {
       account_class: cls,
       account_group: group,
       account_type: accountTypeOf(number),
-      normal_balance: CLASS_RULES[cls as keyof typeof CLASS_RULES]
-        .balance as NorwegianAccountReference['normal_balance'],
+      normal_balance: normalBalanceOf(number),
       description: GROUP_HEADINGS[group] ? `${GROUP_HEADINGS[group]}: ${name}` : name,
       sru_code: null,
       k2_excluded: false,
@@ -513,18 +624,150 @@ function parseChart(text: string): NorwegianAccountReference[] {
   return rows
 }
 
-export const NS4102_REFERENCE: NorwegianAccountReference[] = parseChart(CHART_TEXT)
+/**
+ * The chart is transcribed from NS 4102:**2005 (see the header). NS 4102:2023 has
+ * been published and replaces it, and it is not available from a free source. This
+ * is not a warning about the data being wrong; it is the data being one edition old
+ * and saying so.
+ */
+export const NS4102_EDITION = 'NS 4102:2005 (komprimert)' as const
+
+/**
+ * Names the source of itself and the code cannot settle. They are seeded as written
+ * because a number has to exist, but they are not trusted.
+ *
+ * `2320` and `1850` read like the source's own typos (sertifikatlån and
+ * *markedsbaserte obligasjoner med kort løpetid* are what the modern charts say),
+ * `5600` says ANS where an AS-only chart would name AS and DA, and `7740` carries an
+ * em dash that no Norwegian account name should need.
+ */
+export const NS4102_UNRESOLVED_NAMES: readonly { account_number: string; note: string }[] = [
+  { account_number: '2320', note: 'Setifikatlån er trolig sertifikatlån' },
+  { account_number: '1850', note: 'Samme navn som 1830, trolig kort løpetid' },
+  { account_number: '5600', note: 'ANS i en AS-kontoplan, AS og DA er moderne' },
+  { account_number: '7740', note: 'Kilden har en tankestrek i navnet' },
+]
+
+/**
+ * Accounts that close the year or move equity around. Listed because the standard
+ * lists them; not seeded because this engine closes a year by closing the period, and
+ * an account that must always equal a computed total is an invitation for the two to
+ * disagree. Where the gap is real: a Norwegian company that receives a group
+ * contribution or an owner's share premium has no account here, and that is an equity
+ * transaction the product cannot yet book. Naming it is the honest option; adding the
+ * number would hide the feature gap behind a working-looking posting.
+ */
+export const NS4102_NON_POSTABLE_ACCOUNTS = [
+  '8800',
+  '8900',
+  '8910',
+  '8920',
+  '8930',
+  '8940',
+  '8950',
+  '8960',
+  '8990',
+] as const satisfies readonly string[]
+
+/**
+ * What separates the two legal forms. The source states it plainly: the difference is
+ * equity and private drawings, and the group accounts are dropped for a sole
+ * proprietor. Expressing that as a removal, an addition and one rename keeps 300
+ * accounts in one place, which is the only reason the shared ones cannot drift.
+ */
+const ENK_EXCLUDED_ACCOUNTS = new Set([
+  '1300',
+  '1310',
+  '1320',
+  '1330',
+  '1340',
+  '1800',
+  '1910',
+  '2000',
+  '2010',
+  '2020',
+  '2040',
+  '5300',
+  '5330',
+  '7700',
+  '7710',
+  '7730',
+  '8000',
+  '8010',
+  '8020',
+  '8030',
+])
+
+/** An ENK chart's own accounts: drawings, private expenses and sole-proprietor tax. */
+const CHART_TEXT_ENK_ONLY = `
+2061 Uttak kontanter
+2062 Innskudd kontanter
+2063 Uttak av anleggsmidler/driftsmidler
+2064 Uttak varer og tjenester
+2065 Egen bolig i næringsbygg
+2066 Motkonto egen bolig i næringsbygg
+2067 Lys og varme privat
+2068 Private kostnader til elektronisk kommunikasjon
+2069 Diverse andre privatutgifter
+2071 Forskuddsskatt
+2072 Tilleggsforskudd/restskatt
+2075 Privat bruk av næringsbil
+2077 Premie til egen syke- og ulykkesforsikring
+2078 Premie til tilleggstrygd for sykepenger
+2099 Udisponert resultat
+5390 Annen oppgavepliktig godtgjørelse
+5950 Egen pensjonsordning
+7080 Bruk av privat bil i næring
+`
+
+/** The one account number both forms share with different names. */
+const ENK_ACCOUNT_NAMES: Record<string, string> = {
+  '1900': 'Kasse/kontanter',
+}
+
+export type NorwegianLegalForm = 'as' | 'enk'
+
+const aksjeselskapRows = parseChart(CHART_TEXT_AS).filter(
+  (row) => !NS4102_NON_POSTABLE_ACCOUNTS.includes(row.account_number as (typeof NS4102_NON_POSTABLE_ACCOUNTS)[number]),
+)
+
+const enkRows: NorwegianAccountReference[] = [
+  ...aksjeselskapRows
+    .filter((row) => !ENK_EXCLUDED_ACCOUNTS.has(row.account_number))
+    .map((row) => {
+      const renamed = ENK_ACCOUNT_NAMES[row.account_number]
+      return renamed ? { ...row, account_name: renamed } : row
+    }),
+  ...parseChart(CHART_TEXT_ENK_ONLY),
+].sort((a, b) => a.account_number.localeCompare(b.account_number))
+
+/** The chart an aksjeselskap gets. */
+export const NS4102_AKSJESELSKAP: NorwegianAccountReference[] = aksjeselskapRows
+
+/** The chart an enkeltpersonforetak gets. */
+export const NS4102_ENKTELTPERSONFORETAK: NorwegianAccountReference[] = enkRows
+
+/** Back-compatible alias: aksjeselskap is the form this chart was first written for. */
+export const NS4102_REFERENCE: NorwegianAccountReference[] = NS4102_AKSJESELSKAP
+
+export function ns4102ChartFor(form: NorwegianLegalForm): NorwegianAccountReference[] {
+  return form === 'enk' ? NS4102_ENKTELTPERSONFORETAK : NS4102_AKSJESELSKAP
+}
 
 export const NS4102_GROUPS: readonly string[] = Object.keys(GROUP_HEADINGS)
 
 export function ns4102AccountName(accountNumber: string): string | null {
-  return NS4102_REFERENCE.find((a) => a.account_number === accountNumber)?.account_name ?? null
+  return (
+    NS4102_AKSJESELSKAP.find((a) => a.account_number === accountNumber)?.account_name ??
+    NS4102_ENKTELTPERSONFORETAK.find((a) => a.account_number === accountNumber)?.account_name ??
+    null
+  )
 }
 
 /**
- * Whether the chart can serve a company completely. False while class 8 is missing:
- * interest, currency results and tax would have nowhere to go. A partially sourced
- * chart is not a usable chart, and this flag is what stops a seeding path from
- * discovering that at a deadline instead of in review.
+ * Whether a company can be seeded from this chart and then left alone. It is true
+ * now: class 8 exists, so interest, currency results and tax have somewhere to go.
+ * What it does *not* claim is that the numbering is current, and `NS4102_EDITION`
+ * is where that is said.
  */
-export const NS4102_IS_COMPLETE = false
+export const NS4102_IS_COMPLETE = true
